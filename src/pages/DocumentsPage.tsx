@@ -5,6 +5,7 @@ import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { PlusCircle, Trash2, Edit, FileText, Download } from 'lucide-react';
+import { AddDocumentModal } from '../components/modals/AddDocumentModal';
 
 interface Document {
   id: string;
@@ -20,6 +21,7 @@ export default function DocumentsPage() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   useEffect(() => {
     fetchDocuments();
@@ -73,7 +75,10 @@ export default function DocumentsPage() {
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Documents</h1>
-        <Button className="flex items-center gap-2">
+        <Button 
+          className="flex items-center gap-2"
+          onClick={() => setIsAddModalOpen(true)}
+        >
           <PlusCircle className="h-5 w-5" />
           Upload Document
         </Button>
@@ -121,12 +126,21 @@ export default function DocumentsPage() {
       {documents.length === 0 && (
         <Card className="p-12 text-center">
           <p className="text-gray-500 mb-4">No documents uploaded yet</p>
-          <Button className="flex items-center gap-2">
+          <Button 
+            className="flex items-center gap-2"
+            onClick={() => setIsAddModalOpen(true)}
+          >
             <PlusCircle className="h-5 w-5" />
             Upload Your First Document
           </Button>
         </Card>
       )}
+
+      <AddDocumentModal
+        open={isAddModalOpen}
+        onOpenChange={setIsAddModalOpen}
+        onSuccess={fetchDocuments}
+      />
     </div>
   );
 }
