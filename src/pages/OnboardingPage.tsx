@@ -37,7 +37,7 @@ export default function OnboardingPage() {
     {
       id: 'welcome',
       title: 'Welcome to Rest Easy',
-      description: 'Let's create your personalized end-of-life plan together.',
+      description: 'Let\'s create your personalized end-of-life plan together.',
       component: (
         <div className="space-y-6">
           <p className="text-lg text-gray-600">
@@ -174,7 +174,7 @@ export default function OnboardingPage() {
     {
       id: 'summary',
       title: 'Your Personalized Plan',
-      description: 'Here's what we'll help you accomplish.',
+      description: 'Here\'s what we'll help you accomplish.',
       component: (
         <div className="space-y-6">
           <div className="bg-calm-50 border border-calm-200 rounded-lg p-6">
