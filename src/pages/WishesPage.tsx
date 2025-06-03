@@ -15,6 +15,8 @@ import {
   Check,
   X
 } from 'lucide-react';
+import { AddMedicalDirectiveModal } from '../components/modals/AddMedicalDirectiveModal';
+import { AddMessageModal } from '../components/modals/AddMessageModal';
 
 interface MedicalDirective {
   id: string;
@@ -59,6 +61,9 @@ export default function WishesPage() {
   const [medicalDirectives, setMedicalDirectives] = useState<MedicalDirective | null>(null);
   const [funeralPreferences, setFuneralPreferences] = useState<FuneralPreference | null>(null);
   const [personalMessages, setPersonalMessages] = useState<PersonalMessage[]>([]);
+  
+  const [isAddMedicalModalOpen, setIsAddMedicalModalOpen] = useState(false);
+  const [isAddMessageModalOpen, setIsAddMessageModalOpen] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -223,7 +228,10 @@ export default function WishesPage() {
                         </div>
                       </div>
 
-                      <Button className="flex items-center gap-2">
+                      <Button 
+                        className="flex items-center gap-2"
+                        onClick={() => setIsAddMedicalModalOpen(true)}
+                      >
                         <Edit className="h-4 w-4" />
                         Update Directives
                       </Button>
@@ -231,7 +239,10 @@ export default function WishesPage() {
                   ) : (
                     <div className="text-center py-12">
                       <p className="text-gray-500 mb-4">No medical directives documented yet</p>
-                      <Button className="flex items-center gap-2">
+                      <Button 
+                        className="flex items-center gap-2"
+                        onClick={() => setIsAddMedicalModalOpen(true)}
+                      >
                         <PlusCircle className="h-4 w-4" />
                         Add Medical Directives
                       </Button>
@@ -335,7 +346,10 @@ export default function WishesPage() {
           {activeTab === 'messages' && (
             <div className="space-y-6">
               <div className="flex justify-end">
-                <Button className="flex items-center gap-2">
+                <Button 
+                  className="flex items-center gap-2"
+                  onClick={() => setIsAddMessageModalOpen(true)}
+                >
                   <PlusCircle className="h-4 w-4" />
                   New Message
                 </Button>
@@ -400,6 +414,18 @@ export default function WishesPage() {
           )}
         </>
       )}
+
+      <AddMedicalDirectiveModal
+        open={isAddMedicalModalOpen}
+        onOpenChange={setIsAddMedicalModalOpen}
+        onSuccess={loadData}
+      />
+
+      <AddMessageModal
+        open={isAddMessageModalOpen}
+        onOpenChange={setIsAddMessageModalOpen}
+        onSuccess={loadData}
+      />
     </div>
   );
 }
