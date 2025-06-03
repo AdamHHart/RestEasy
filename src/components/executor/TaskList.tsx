@@ -1,9 +1,9 @@
-```typescript
 import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
 import { CheckCircle2, Circle, Clock, AlertCircle } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { supabase } from '../../lib/supabase';
 
 interface Task {
   id: string;
@@ -12,18 +12,41 @@ interface Task {
   category: 'financial' | 'legal' | 'personal' | 'digital';
   priority: 'high' | 'medium' | 'low';
   status: 'pending' | 'in_progress' | 'completed';
-  estimatedTime: string;
+  estimated_time: string;
   documents?: string[];
   contacts?: Array<{
-    name: string;
     role: string;
-    contact: string;
+    details: string;
   }>;
 }
 
 export default function TaskList() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [filter, setFilter] = useState<'all' | 'pending' | 'in_progress' | 'completed'>('all');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchTasks();
+  }, []);
+
+  async function fetchTasks() {
+    try {
+      const { data, error } = await supabase
+        .from('executor_tasks')
+        .select('*')
+        .order('priority', { ascending: false })
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      setTasks(data || []);
+    } catch (err) {
+      setError('Failed to load tasks');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   const getPriorityColor = (priority: Task['priority']) => {
     return {
@@ -45,14 +68,44 @@ export default function TaskList() {
   };
 
   const updateTaskStatus = async (taskId: string, newStatus: Task['status']) => {
-    setTasks(tasks.map(task => 
-      task.id === taskId ? { ...task, status: newStatus } : task
-    ));
+    try {
+      const { error } = await supabase
+        .from('executor_tasks')
+        .update({ status: newStatus })
+        .eq('id', taskId);
+
+      if (error) throw error;
+      
+      setTasks(tasks.map(task => 
+        task.id === taskId ? { ...task, status: newStatus } : task
+      ));
+    } catch (err) {
+      console.error('Failed to update task status:', err);
+    }
   };
 
   const filteredTasks = tasks.filter(task => 
     filter === 'all' ? true : task.status === filter
   );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[200px]">
+        <div className="animate-pulse h-8 w-8 rounded-full bg-calm-400"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center text-red-600 py-8">
+          <AlertCircle className="h-5 w-5 mr-2" />
+          {error}
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -115,7 +168,7 @@ export default function TaskList() {
               <div className="space-y-3">
                 <div className="flex items-center text-sm text-gray-500">
                   <Clock className="h-4 w-4 mr-2" />
-                  Estimated time: {task.estimatedTime}
+                  Estimated time: {task.estimated_time}
                 </div>
                 
                 {task.documents && task.documents.length > 0 && (
@@ -135,8 +188,8 @@ export default function TaskList() {
                     <div className="space-y-2">
                       {task.contacts.map((contact, index) => (
                         <div key={index} className="text-sm">
-                          <p className="font-medium">{contact.name}</p>
-                          <p className="text-gray-600">{contact.role}: {contact.contact}</p>
+                          <p className="font-medium">{contact.role}</p>
+                          <p className="text-gray-600">{contact.details}</p>
                         </div>
                       ))}
                     </div>
@@ -159,4 +212,3 @@ export default function TaskList() {
     </div>
   );
 }
-```

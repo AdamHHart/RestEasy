@@ -1,14 +1,62 @@
-```typescript
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { CheckCircle2, ListTodo, Mail, AlertCircle } from 'lucide-react';
 import TaskList from '../components/executor/TaskList';
 import CommunicationCenter from '../components/executor/CommunicationCenter';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function ExecutorDashboard() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('tasks');
+  const [stats, setStats] = useState({
+    pending: 0,
+    inProgress: 0,
+    completed: 0
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  async function fetchStats() {
+    try {
+      const { data, error } = await supabase
+        .from('executor_tasks')
+        .select('status');
+
+      if (error) throw error;
+
+      const stats = (data || []).reduce((acc, task) => {
+        switch (task.status) {
+          case 'pending':
+            acc.pending++;
+            break;
+          case 'in_progress':
+            acc.inProgress++;
+            break;
+          case 'completed':
+            acc.completed++;
+            break;
+        }
+        return acc;
+      }, { pending: 0, inProgress: 0, completed: 0 });
+
+      setStats(stats);
+    } catch (err) {
+      console.error('Error fetching stats:', err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const totalTasks = stats.pending + stats.inProgress + stats.completed;
+  const completionPercentage = totalTasks > 0 
+    ? (stats.completed / totalTasks) * 100 
+    : 0;
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -31,18 +79,21 @@ export default function ExecutorDashboard() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Pending</span>
-                <span className="font-medium">5</span>
+                <span className="font-medium">{stats.pending}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">In Progress</span>
-                <span className="font-medium">3</span>
+                <span className="font-medium">{stats.inProgress}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Completed</span>
-                <span className="font-medium">8</span>
+                <span className="font-medium">{stats.completed}</span>
               </div>
               <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full bg-calm-500" style={{ width: '50%' }}></div>
+                <div 
+                  className="h-full bg-calm-500 transition-all duration-300" 
+                  style={{ width: `${completionPercentage}%` }}
+                ></div>
               </div>
             </div>
           </CardContent>
@@ -118,4 +169,3 @@ export default function ExecutorDashboard() {
     </div>
   );
 }
-```
