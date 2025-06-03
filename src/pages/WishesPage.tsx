@@ -71,29 +71,35 @@ export default function WishesPage() {
     try {
       switch (activeTab) {
         case 'medical':
-          const { data: medicalData } = await supabase
+          const { data: medicalData, error: medicalError } = await supabase
             .from('medical_directives')
             .select('*')
             .eq('user_id', user?.id)
-            .single();
-          setMedicalDirectives(medicalData);
+            .limit(1);
+          
+          if (medicalError) throw medicalError;
+          setMedicalDirectives(medicalData?.[0] || null);
           break;
 
         case 'funeral':
-          const { data: funeralData } = await supabase
+          const { data: funeralData, error: funeralError } = await supabase
             .from('funeral_preferences')
             .select('*')
             .eq('user_id', user?.id)
-            .single();
-          setFuneralPreferences(funeralData);
+            .limit(1);
+          
+          if (funeralError) throw funeralError;
+          setFuneralPreferences(funeralData?.[0] || null);
           break;
 
         case 'messages':
-          const { data: messagesData } = await supabase
+          const { data: messagesData, error: messagesError } = await supabase
             .from('personal_messages')
             .select('*')
             .eq('user_id', user?.id)
             .order('created_at', { ascending: false });
+          
+          if (messagesError) throw messagesError;
           setPersonalMessages(messagesData || []);
           break;
       }
