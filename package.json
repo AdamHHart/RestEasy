@@ -1,3 +1,4 @@
+```json
 {
   "name": "rest-easy",
   "private": true,
@@ -53,3 +54,4 @@
     "vite": "^5.4.2"
   }
 }
+```
