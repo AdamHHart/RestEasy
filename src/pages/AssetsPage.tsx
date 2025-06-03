@@ -5,6 +5,7 @@ import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { PlusCircle, Trash2, Edit } from 'lucide-react';
+import { AddAssetModal } from '../components/modals/AddAssetModal';
 
 interface Asset {
   id: string;
@@ -22,6 +23,7 @@ export default function AssetsPage() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   useEffect(() => {
     fetchAssets();
@@ -65,7 +67,7 @@ export default function AssetsPage() {
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Assets</h1>
-        <Button className="flex items-center gap-2">
+        <Button className="flex items-center gap-2" onClick={() => setIsAddModalOpen(true)}>
           <PlusCircle className="h-5 w-5" />
           Add Asset
         </Button>
@@ -115,12 +117,21 @@ export default function AssetsPage() {
       {assets.length === 0 && (
         <Card className="p-12 text-center">
           <p className="text-gray-500 mb-4">No assets added yet</p>
-          <Button className="flex items-center gap-2">
+          <Button 
+            className="flex items-center gap-2"
+            onClick={() => setIsAddModalOpen(true)}
+          >
             <PlusCircle className="h-5 w-5" />
             Add Your First Asset
           </Button>
         </Card>
       )}
+
+      <AddAssetModal
+        open={isAddModalOpen}
+        onOpenChange={setIsAddModalOpen}
+        onSuccess={fetchAssets}
+      />
     </div>
   );
 }
