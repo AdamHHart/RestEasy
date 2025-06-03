@@ -28,9 +28,10 @@ export default function CommunicationCenter() {
     {
       id: '1',
       title: 'Initial Notification',
-      content: `Dear [Name],
+      content: \`Dear [Name],
 
-I am writing to inform you that I am serving as the executor of [Deceased's Name]'s estate. As part of this process, I need to [Action Required].
+I am writing to inform you that I am serving as the executor of [Deceased's Name]\'s estate. As part of this process, I need to [Action Required].
+]
 
 Could you please provide the following information:
 - [Required Item 1]
@@ -45,9 +46,10 @@ Best regards,
     {
       id: '2',
       title: 'Document Request',
-      content: `Dear [Name],
+      content: \`Dear [Name],
 
-In my capacity as executor of [Deceased's Name]'s estate, I am requesting copies of the following documents:
+In my capacity as executor of [Deceased's Name]\'s estate, I am requesting copies of the following documents:
+]
 - [Document 1]
 - [Document 2]
 
@@ -106,7 +108,7 @@ Best regards,
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => window.location.href = `mailto:${contact.email}`}
+                      onClick={() => window.location.href = \`mailto:${contact.email}`}
                     >
                       <Mail className="h-4 w-4" />
                     </Button>
@@ -114,7 +116,7 @@ Best regards,
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => window.location.href = `tel:${contact.phone}`}
+                        onClick={() => window.location.href = \`tel:${contact.phone}`}
                       >
                         <Phone className="h-4 w-4" />
                       </Button>
