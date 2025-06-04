@@ -81,6 +81,10 @@ export function AddDocumentModal({ open, onOpenChange, onSuccess }: AddDocumentM
     }
   };
 
+  const isSubmitDisabled = () => {
+    return loading || !formData.name || (!formData.file_path && !scannedImage);
+  };
+
   return (
     <>
       {showScanner && (
@@ -175,7 +179,7 @@ export function AddDocumentModal({ open, onOpenChange, onSuccess }: AddDocumentM
               </Button>
               <Button 
                 type="submit" 
-                disabled={loading || (!formData.file_path && !scannedImage)}
+                disabled={isSubmitDisabled()}
               >
                 {loading ? 'Uploading...' : 'Upload Document'}
               </Button>
