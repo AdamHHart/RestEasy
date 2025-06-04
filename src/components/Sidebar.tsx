@@ -6,7 +6,8 @@ import {
   HeartHandshake, 
   Users, 
   Settings,
-  ShieldCheck
+  ShieldCheck,
+  Scale
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
@@ -46,6 +47,12 @@ export default function Sidebar() {
       icon: <Users className="h-5 w-5" />,
       href: '/executors',
       roles: ['planner'],
+    },
+    {
+      title: 'Legal & Privacy',
+      icon: <Scale className="h-5 w-5" />,
+      href: '/legal',
+      roles: ['planner', 'executor'],
     },
     {
       title: 'Profile',

@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../co
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { User, Mail, Shield, AlertCircle } from 'lucide-react';
+import AuditTrail from '../components/AuditTrail';
 
 export default function ProfilePage() {
   const { user, userRole } = useAuth();
@@ -102,6 +103,8 @@ export default function ProfilePage() {
             </Button>
           </CardContent>
         </Card>
+
+        <AuditTrail />
 
         {error && (
           <div className="p-4 bg-red-50 border border-red-200 rounded-md flex items-center gap-2 text-red-600">

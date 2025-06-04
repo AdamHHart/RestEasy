@@ -13,6 +13,7 @@ import DocumentsPage from './pages/DocumentsPage';
 import WishesPage from './pages/WishesPage';
 import ExecutorsPage from './pages/ExecutorsPage';
 import ProfilePage from './pages/ProfilePage';
+import LegalPage from './pages/LegalPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 // Auth provider
@@ -55,7 +56,7 @@ function App() {
       <Routes>
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/" element={<Layout />}>
-          <Route index element={<Navigate to="/dashboard\" replace />} />
+          <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="onboarding" element={<OnboardingPage />} />
           <Route path="assets" element={<AssetsPage />} />
@@ -63,11 +64,10 @@ function App() {
           <Route path="wishes" element={<WishesPage />} />
           <Route path="executors" element={<ExecutorsPage />} />
           <Route path="profile" element={<ProfilePage />} />
+          <Route path="legal" element={<LegalPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
     </AuthProvider>
   );
 }
-
-export default App;
