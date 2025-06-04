@@ -6,6 +6,7 @@ import { supabase } from './lib/supabase';
 // Components
 import Layout from './components/Layout';
 import AuthPage from './pages/AuthPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import DashboardPage from './pages/DashboardPage';
 import OnboardingPage from './pages/OnboardingPage';
 import AssetsPage from './pages/AssetsPage';
@@ -55,8 +56,9 @@ function App() {
     <AuthProvider session={session}>
       <Routes>
         <Route path="/auth" element={<AuthPage />} />
+        <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
         <Route path="/" element={<Layout />}>
-          <Route index element={<Navigate to="/dashboard\" replace />} />
+          <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="onboarding" element={<OnboardingPage />} />
           <Route path="assets" element={<AssetsPage />} />
@@ -72,4 +74,4 @@ function App() {
   );
 }
 
-export default App
+export default App;
