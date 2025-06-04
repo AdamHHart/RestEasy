@@ -68,12 +68,12 @@ export default function Sidebar() {
 
   return (
     <aside className="hidden md:flex w-64 flex-col bg-white border-r border-border">
-      <div className="p-4 flex items-center gap-3 border-b border-border">
-        <Link to="/dashboard" className="flex items-center">
+      <div className="p-4 flex items-center justify-center border-b border-border">
+        <Link to="/dashboard">
           <img 
             src="/resteasy_logo.png" 
             alt="Rest Easy" 
-            className="h-8 w-auto"
+            className="h-12 w-auto"
           />
         </Link>
       </div>
