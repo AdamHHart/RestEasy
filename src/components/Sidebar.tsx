@@ -6,14 +6,17 @@ import {
   HeartHandshake, 
   Users, 
   Settings,
-  Scale
+  Scale,
+  ShieldCheck 
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
+import { useState } from 'react';
 
 export default function Sidebar() {
   const location = useLocation();
   const { userRole } = useAuth();
+  const [logoError, setLogoError] = useState(false);
   
   // Navigation items
   const navItems = [
@@ -70,11 +73,19 @@ export default function Sidebar() {
     <aside className="hidden md:flex w-64 flex-col bg-white border-r border-border">
       <div className="p-4 flex items-center justify-center border-b border-border">
         <Link to="/dashboard">
-          <img 
-            src="/resteasy_logo.png" 
-            alt="Rest Easy" 
-            className="h-12 w-auto"
-          />
+          {logoError ? (
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-8 w-8 text-calm-600" />
+              <span className="text-xl font-semibold">Rest Easy</span>
+            </div>
+          ) : (
+            <img 
+              src="/resteasy_logo.png" 
+              alt="Rest Easy" 
+              className="h-12 w-auto"
+              onError={() => setLogoError(true)}
+            />
+          )}
         </Link>
       </div>
       
