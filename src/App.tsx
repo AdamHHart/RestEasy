@@ -56,7 +56,7 @@ function App() {
       <Routes>
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/" element={<Layout />}>
-          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route index element={<Navigate to="/dashboard\" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="onboarding" element={<OnboardingPage />} />
           <Route path="assets" element={<AssetsPage />} />
@@ -71,3 +71,5 @@ function App() {
     </AuthProvider>
   );
 }
+
+export default App
