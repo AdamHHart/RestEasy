@@ -15,6 +15,9 @@ import {
   Check,
   X
 } from 'lucide-react';
+import { AddMedicalDirectiveModal } from '../components/modals/AddMedicalDirectiveModal';
+import { AddFuneralPreferenceModal } from '../components/modals/AddFuneralPreferenceModal';
+import { AddMessageModal } from '../components/modals/AddMessageModal';
 
 interface MedicalDirective {
   id: string;
@@ -59,6 +62,10 @@ export default function WishesPage() {
   const [medicalDirectives, setMedicalDirectives] = useState<MedicalDirective | null>(null);
   const [funeralPreferences, setFuneralPreferences] = useState<FuneralPreference | null>(null);
   const [personalMessages, setPersonalMessages] = useState<PersonalMessage[]>([]);
+
+  const [isMedicalModalOpen, setIsMedicalModalOpen] = useState(false);
+  const [isFuneralModalOpen, setIsFuneralModalOpen] = useState(false);
+  const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -110,6 +117,10 @@ export default function WishesPage() {
       setLoading(false);
     }
   }
+
+  const handleSuccess = () => {
+    loadData();
+  };
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -231,7 +242,10 @@ export default function WishesPage() {
                   ) : (
                     <div className="text-center py-12">
                       <p className="text-gray-500 mb-4">No medical directives documented yet</p>
-                      <Button className="flex items-center gap-2">
+                      <Button 
+                        className="flex items-center gap-2"
+                        onClick={() => setIsMedicalModalOpen(true)}
+                      >
                         <PlusCircle className="h-4 w-4" />
                         Add Medical Directives
                       </Button>
@@ -321,7 +335,10 @@ export default function WishesPage() {
                   ) : (
                     <div className="text-center py-12">
                       <p className="text-gray-500 mb-4">No funeral preferences documented yet</p>
-                      <Button className="flex items-center gap-2">
+                      <Button 
+                        className="flex items-center gap-2"
+                        onClick={() => setIsFuneralModalOpen(true)}
+                      >
                         <PlusCircle className="h-4 w-4" />
                         Add Funeral Preferences
                       </Button>
@@ -335,7 +352,10 @@ export default function WishesPage() {
           {activeTab === 'messages' && (
             <div className="space-y-6">
               <div className="flex justify-end">
-                <Button className="flex items-center gap-2">
+                <Button 
+                  className="flex items-center gap-2"
+                  onClick={() => setIsMessageModalOpen(true)}
+                >
                   <PlusCircle className="h-4 w-4" />
                   New Message
                 </Button>
@@ -389,7 +409,10 @@ export default function WishesPage() {
                 <Card>
                   <CardContent className="text-center py-12">
                     <p className="text-gray-500 mb-4">No personal messages created yet</p>
-                    <Button className="flex items-center gap-2">
+                    <Button 
+                      className="flex items-center gap-2"
+                      onClick={() => setIsMessageModalOpen(true)}
+                    >
                       <PlusCircle className="h-4 w-4" />
                       Create Your First Message
                     </Button>
@@ -400,6 +423,24 @@ export default function WishesPage() {
           )}
         </>
       )}
+
+      <AddMedicalDirectiveModal
+        open={isMedicalModalOpen}
+        onOpenChange={setIsMedicalModalOpen}
+        onSuccess={handleSuccess}
+      />
+
+      <AddFuneralPreferenceModal
+        open={isFuneralModalOpen}
+        onOpenChange={setIsFuneralModalOpen}
+        onSuccess={handleSuccess}
+      />
+
+      <AddMessageModal
+        open={isMessageModalOpen}
+        onOpenChange={setIsMessageModalOpen}
+        onSuccess={handleSuccess}
+      />
     </div>
   );
 }
