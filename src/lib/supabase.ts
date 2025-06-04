@@ -70,6 +70,7 @@ export type TriggerEvent = {
   verification_details: string;
   triggered: boolean;
   triggered_date?: string;
+  executor_id?: string; // Added executor_id field
   created_at: string;
   updated_at: string;
 };
