@@ -9,7 +9,10 @@ const corsHeaders = {
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 200, headers: corsHeaders });
+    return new Response(null, {
+      status: 200,
+      headers: corsHeaders,
+    });
   }
 
   try {
@@ -19,47 +22,52 @@ serve(async (req: Request) => {
 
     const { executorId, email, name } = await req.json();
 
-    // Generate invitation token
-    const token = crypto.randomUUID();
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
+    if (!executorId || !email || !name) {
+      return new Response(
+        JSON.stringify({
+          error: "Missing required fields",
+        }),
+        {
+          status: 400,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
 
-    // Create invitation record
+    // Generate a secure invitation token
+    const token = crypto.randomUUID();
+
+    // Store the invitation token
     const { error: inviteError } = await supabase
       .from('executor_invitations')
-      .insert({
-        executor_id: executorId,
-        token,
-        expires_at: expiresAt.toISOString(),
-      });
+      .insert([
+        {
+          executor_id: executorId,
+          token,
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days
+        }
+      ]);
 
-    if (inviteError) throw inviteError;
+    if (inviteError) {
+      throw inviteError;
+    }
 
-    // Send invitation email
-    const inviteUrl = `${Deno.env.get("PUBLIC_APP_URL")}/executor/accept-invitation?token=${token}`;
-    
-    // In production, integrate with your email service
-    // For demo, we'll just log the invitation
-    console.log(`
-      To: ${email}
-      Subject: You've been invited to be an executor
-      
-      Dear ${name},
-      
-      You have been designated as an executor in RestEasy. Please click the link below to accept:
-      
-      ${inviteUrl}
-      
-      This link expires in 7 days.
-    `);
+    // In a real application, you would send an email here
+    // For this demo, we'll just log the invitation details
+    console.log(`Invitation sent to ${email} with token ${token}`);
 
     // Log the activity
     await supabase
       .from('activity_log')
-      .insert({
-        action_type: 'executor_invited',
-        details: `Invitation sent to executor ${name} (${email})`,
-      });
+      .insert([
+        {
+          action_type: 'executor_invited',
+          details: `Invitation sent to executor ${name} (${email})`,
+        }
+      ]);
 
     return new Response(
       JSON.stringify({
@@ -68,15 +76,23 @@ serve(async (req: Request) => {
       }),
       {
         status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
       }
     );
   } catch (error) {
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({
+        error: error.message,
+      }),
       {
         status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
       }
     );
   }
