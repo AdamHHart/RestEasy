@@ -71,7 +71,7 @@ export default function Sidebar() {
       <div className="p-4 flex items-center justify-center border-b border-border">
         <Link to="/dashboard">
           <img 
-            src="/resteasy_logo.png" 
+            src="/logo.png" 
             alt="Rest Easy" 
             className="h-12 w-auto"
           />
