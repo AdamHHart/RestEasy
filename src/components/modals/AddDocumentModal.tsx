@@ -71,11 +71,26 @@ export function AddDocumentModal({ open, onOpenChange, onSuccess }: AddDocumentM
   const handleCapture = (imageData: string) => {
     setScannedImage(imageData);
     setShowScanner(false);
+    setFormData(prev => ({ ...prev, file_path: 'scanned_document.jpg' }));
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setFormData(prev => ({ ...prev, file_path: file.name }));
+    }
   };
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      {showScanner && (
+        <DocumentScanner
+          onCapture={handleCapture}
+          onClose={() => setShowScanner(false)}
+        />
+      )}
+      
+      <Dialog open={open && !showScanner} onOpenChange={onOpenChange}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Upload New Document</DialogTitle>
@@ -127,7 +142,10 @@ export function AddDocumentModal({ open, onOpenChange, onSuccess }: AddDocumentM
                       variant="outline"
                       size="sm"
                       className="absolute top-2 right-2"
-                      onClick={() => setScannedImage(null)}
+                      onClick={() => {
+                        setScannedImage(null);
+                        setFormData(prev => ({ ...prev, file_path: '' }));
+                      }}
                     >
                       Remove
                     </Button>
@@ -137,12 +155,7 @@ export function AddDocumentModal({ open, onOpenChange, onSuccess }: AddDocumentM
                     <Input
                       type="file"
                       accept="image/*,application/pdf"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          setFormData({ ...formData, file_path: file.name });
-                        }
-                      }}
+                      onChange={handleFileChange}
                     />
                     <Button
                       type="button"
@@ -160,20 +173,16 @@ export function AddDocumentModal({ open, onOpenChange, onSuccess }: AddDocumentM
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={loading || (!formData.file_path && !scannedImage)}>
+              <Button 
+                type="submit" 
+                disabled={loading || (!formData.file_path && !scannedImage)}
+              >
                 {loading ? 'Uploading...' : 'Upload Document'}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
-
-      {showScanner && (
-        <DocumentScanner
-          onCapture={handleCapture}
-          onClose={() => setShowScanner(false)}
-        />
-      )}
     </>
   );
 }
