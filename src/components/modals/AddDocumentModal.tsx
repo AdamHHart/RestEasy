@@ -17,11 +17,12 @@ export function AddDocumentModal({ open, onOpenChange, onSuccess }: AddDocumentM
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [scannedImage, setScannedImage] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     category: 'legal',
-    file_path: '', // In a real app, this would be handled by file upload
+    file_path: '',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -29,16 +30,37 @@ export function AddDocumentModal({ open, onOpenChange, onSuccess }: AddDocumentM
     setLoading(true);
 
     try {
+      // In a real app, you would:
+      // 1. Upload the scanned image or file to storage
+      // 2. Get the file path
+      // 3. Then create the document record
+      
+      let file_path = formData.file_path;
+      if (scannedImage) {
+        // Here you would upload the scanned image and get its path
+        file_path = 'scanned_document.jpg'; // Placeholder
+      }
+
       const { error } = await supabase.from('documents').insert([
         {
           user_id: user?.id,
           ...formData,
+          file_path,
         },
       ]);
 
       if (error) throw error;
       onSuccess();
       onOpenChange(false);
+      
+      // Reset form
+      setFormData({
+        name: '',
+        description: '',
+        category: 'legal',
+        file_path: '',
+      });
+      setScannedImage(null);
     } catch (error) {
       console.error('Error adding document:', error);
     } finally {
@@ -46,16 +68,9 @@ export function AddDocumentModal({ open, onOpenChange, onSuccess }: AddDocumentM
     }
   };
 
-  const handleCapture = async (imageData: string) => {
-    try {
-      // In a real app, you would:
-      // 1. Upload the image to storage
-      // 2. Get the file path
-      // 3. Update formData with the file path
-      setFormData({ ...formData, file_path: 'scanned_document.jpg' });
-    } catch (error) {
-      console.error('Error processing scanned document:', error);
-    }
+  const handleCapture = (imageData: string) => {
+    setScannedImage(imageData);
+    setShowScanner(false);
   };
 
   return (
@@ -99,22 +114,45 @@ export function AddDocumentModal({ open, onOpenChange, onSuccess }: AddDocumentM
             
             <div>
               <label className="block text-sm font-medium mb-1">Document</label>
-              <div className="flex gap-2">
-                <Input
-                  type="file"
-                  accept="image/*,application/pdf"
-                  onChange={(e) => {
-                    // In a real app, this would handle file upload
-                    setFormData({ ...formData, file_path: e.target.value });
-                  }}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowScanner(true)}
-                >
-                  <Camera className="h-4 w-4" />
-                </Button>
+              <div className="space-y-3">
+                {scannedImage ? (
+                  <div className="relative aspect-[4/3] bg-gray-100 rounded-lg overflow-hidden">
+                    <img 
+                      src={scannedImage} 
+                      alt="Scanned document" 
+                      className="w-full h-full object-contain"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="absolute top-2 right-2"
+                      onClick={() => setScannedImage(null)}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setFormData({ ...formData, file_path: file.name });
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowScanner(true)}
+                    >
+                      <Camera className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
             
@@ -122,7 +160,7 @@ export function AddDocumentModal({ open, onOpenChange, onSuccess }: AddDocumentM
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={loading}>
+              <Button type="submit" disabled={loading || (!formData.file_path && !scannedImage)}>
                 {loading ? 'Uploading...' : 'Upload Document'}
               </Button>
             </DialogFooter>

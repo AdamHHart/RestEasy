@@ -26,12 +26,11 @@ export default function DocumentScanner({ onCapture, onClose }: DocumentScannerP
   const accept = () => {
     if (capturedImage) {
       onCapture(capturedImage);
-      onClose();
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 z-[100] bg-black bg-opacity-50 flex items-center justify-center">
       <div className="bg-white rounded-lg p-4 max-w-2xl w-full mx-4">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold">Document Scanner</h2>
@@ -48,7 +47,9 @@ export default function DocumentScanner({ onCapture, onClose }: DocumentScannerP
               className="w-full h-full object-cover"
               videoConstraints={{
                 facingMode: 'environment',
-                aspectRatio: 4/3
+                aspectRatio: 4/3,
+                width: { ideal: 1920 },
+                height: { ideal: 1440 }
               }}
             />
           ) : (
