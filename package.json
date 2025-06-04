@@ -57,6 +57,7 @@
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.11",
     "globals": "^15.9.0",
+    "happy-dom": "^13.6.2",
     "jsdom": "^24.0.0",
     "msw": "^2.2.3",
     "pa11y-ci": "^3.1.0",
