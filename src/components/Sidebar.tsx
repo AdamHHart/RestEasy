@@ -6,7 +6,6 @@ import {
   HeartHandshake, 
   Users, 
   Settings,
-  ShieldCheck,
   Scale
 } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -70,8 +69,13 @@ export default function Sidebar() {
   return (
     <aside className="hidden md:flex w-64 flex-col bg-white border-r border-border">
       <div className="p-4 flex items-center gap-3 border-b border-border">
-        <ShieldCheck className="h-8 w-8 text-calm-600" />
-        <h1 className="text-xl font-semibold text-foreground">Rest Easy</h1>
+        <Link to="/dashboard" className="flex items-center">
+          <img 
+            src="/resteasy_logo.png" 
+            alt="Rest Easy" 
+            className="h-8 w-auto"
+          />
+        </Link>
       </div>
       
       <nav className="flex-1 py-6 px-4 space-y-1">
@@ -100,7 +104,6 @@ export default function Sidebar() {
         <div className="p-3 bg-calm-100 rounded-lg">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <ShieldCheck className="h-5 w-5 text-calm-600" />
               <span className="text-xs font-medium text-calm-600">End-to-end encrypted</span>
             </div>
           </div>
