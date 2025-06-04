@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
+import { toast } from '../components/ui/toast';
 
 type AuthContextType = {
   session: Session | null;
@@ -35,34 +36,50 @@ export function AuthProvider({
         }
 
         // Fetch user profile from our profiles table
-        const { data, error } = await supabase
+        const { data: profile, error: fetchError } = await supabase
           .from('profiles')
           .select('role')
           .eq('id', user.id)
           .single();
 
-        if (error) {
-          if (error.code === 'PGRST116') {
+        if (fetchError) {
+          if (fetchError.code === 'PGRST116') {
             // Profile doesn't exist yet, create it
             const { error: insertError } = await supabase
               .from('profiles')
               .insert([
                 { id: user.id, role: 'planner' }
-              ])
-              .single();
+              ]);
 
             if (insertError) {
+              toast({
+                title: "Error",
+                description: "Failed to create user profile. Please try again.",
+                variant: "destructive"
+              });
               console.error('Error creating user profile:', insertError);
-            } else {
-              setUserRole('planner');
+              await supabase.auth.signOut();
+              navigate('/auth');
+              return;
             }
+            setUserRole('planner');
           } else {
-            console.error('Error fetching user profile:', error);
+            toast({
+              title: "Error",
+              description: "Failed to fetch user profile. Please try again.",
+              variant: "destructive"
+            });
+            console.error('Error fetching user profile:', fetchError);
           }
-        } else if (data) {
-          setUserRole(data.role);
+        } else if (profile) {
+          setUserRole(profile.role);
         }
       } catch (error) {
+        toast({
+          title: "Error",
+          description: "An unexpected error occurred. Please try again.",
+          variant: "destructive"
+        });
         console.error('Unexpected error:', error);
       } finally {
         setLoading(false);
@@ -70,11 +87,11 @@ export function AuthProvider({
     }
 
     getUserProfile();
-  }, [user]);
+  }, [user, navigate]);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      async (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
       }
@@ -84,8 +101,17 @@ export function AuthProvider({
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    navigate('/auth');
+    try {
+      await supabase.auth.signOut();
+      navigate('/auth');
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to sign out. Please try again.",
+        variant: "destructive"
+      });
+      console.error('Error signing out:', error);
+    }
   };
 
   const value = {
