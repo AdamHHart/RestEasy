@@ -7,7 +7,8 @@ import {
   Users, 
   Settings,
   Scale,
-  ShieldCheck 
+  ShieldCheck,
+  CheckSquare
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
@@ -25,6 +26,12 @@ export default function Sidebar() {
       icon: <Home className="h-5 w-5" />,
       href: '/dashboard',
       roles: ['planner', 'executor'],
+    },
+    {
+      title: 'My Checklist',
+      icon: <CheckSquare className="h-5 w-5" />,
+      href: '/checklist',
+      roles: ['planner'],
     },
     {
       title: 'Assets',

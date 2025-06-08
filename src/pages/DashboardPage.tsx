@@ -12,7 +12,8 @@ import {
   ChevronRight,
   ShieldCheck,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  CheckSquare
 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -23,8 +24,11 @@ export default function DashboardPage() {
     documents: 0,
     wishes: 0,
     executors: 0,
+    checklistCompleted: 0,
+    checklistTotal: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [hasOnboarded, setHasOnboarded] = useState(false);
   
   useEffect(() => {
     async function fetchStats() {
@@ -33,6 +37,15 @@ export default function DashboardPage() {
       setLoading(true);
       
       try {
+        // Check if user has completed onboarding
+        const { data: onboardingData } = await supabase
+          .from('onboarding_responses')
+          .select('completed')
+          .eq('user_id', user.id)
+          .single();
+        
+        setHasOnboarded(!!onboardingData?.completed);
+
         // Fetch count of assets
         const { count: assetsCount } = await supabase
           .from('assets')
@@ -56,12 +69,23 @@ export default function DashboardPage() {
           .from('executors')
           .select('*', { count: 'exact', head: true })
           .eq('planner_id', user.id);
+
+        // Fetch checklist progress
+        const { data: checklistData } = await supabase
+          .from('user_checklists')
+          .select('completed')
+          .eq('user_id', user.id);
+
+        const checklistTotal = checklistData?.length || 0;
+        const checklistCompleted = checklistData?.filter(item => item.completed).length || 0;
         
         setStats({
           assets: assetsCount || 0,
           documents: documentsCount || 0,
           wishes: wishesCount || 0,
           executors: executorsCount || 0,
+          checklistCompleted,
+          checklistTotal,
         });
       } catch (error) {
         console.error('Error fetching stats:', error);
@@ -82,6 +106,8 @@ export default function DashboardPage() {
     if (total < 10) return 'in progress';
     return 'well prepared';
   };
+
+  const checklistProgress = stats.checklistTotal > 0 ? (stats.checklistCompleted / stats.checklistTotal) * 100 : 0;
   
   return (
     <div className="space-y-6">
@@ -92,46 +118,96 @@ export default function DashboardPage() {
         </div>
       </div>
       
-      {/* Welcome Card */}
-      <Card className="border-calm-300 bg-gradient-to-r from-calm-100 to-white">
-        <CardHeader>
-          <CardTitle className="text-xl">Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}!</CardTitle>
-          <CardDescription>
-            Your end-of-life planning is {getCompletionStatus()}. 
-            {getTotalItems() === 0 ? ' Start adding your information to secure your legacy.' : ''}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center space-x-2">
-            <div className="h-2 flex-1 bg-calm-200 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-calm-500 rounded-full"
-                style={{ 
-                  width: `${Math.min(100, getTotalItems() * 5)}%`,
-                  transition: 'width 1s ease-in-out'
-                }}
-              ></div>
-            </div>
-            <span className="text-sm font-medium text-muted-foreground">
-              {Math.min(100, getTotalItems() * 5)}%
-            </span>
-          </div>
-        </CardContent>
-        {getTotalItems() === 0 && (
+      {/* Onboarding prompt */}
+      {!hasOnboarded && (
+        <Card className="border-calm-300 bg-gradient-to-r from-calm-100 to-white">
+          <CardHeader>
+            <CardTitle className="text-xl">Welcome to Rest Easy!</CardTitle>
+            <CardDescription>
+              Let's get you started with a quick setup to create your personalized planning checklist.
+            </CardDescription>
+          </CardHeader>
           <CardFooter>
             <Button 
               variant="calm" 
-              className="mt-2"
-              onClick={() => navigate('/assets')}
+              onClick={() => navigate('/onboarding')}
             >
-              Start adding assets
+              Start Setup (5 minutes)
             </Button>
           </CardFooter>
-        )}
-      </Card>
+        </Card>
+      )}
+
+      {/* Welcome Card */}
+      {hasOnboarded && (
+        <Card className="border-calm-300 bg-gradient-to-r from-calm-100 to-white">
+          <CardHeader>
+            <CardTitle className="text-xl">Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}!</CardTitle>
+            <CardDescription>
+              Your end-of-life planning is {getCompletionStatus()}. 
+              {getTotalItems() === 0 ? ' Start working through your checklist to secure your legacy.' : ''}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center space-x-2">
+              <div className="h-2 flex-1 bg-calm-200 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-calm-500 rounded-full"
+                  style={{ 
+                    width: `${Math.min(100, getTotalItems() * 5)}%`,
+                    transition: 'width 1s ease-in-out'
+                  }}
+                ></div>
+              </div>
+              <span className="text-sm font-medium text-muted-foreground">
+                {Math.min(100, getTotalItems() * 5)}%
+              </span>
+            </div>
+          </CardContent>
+          {getTotalItems() === 0 && (
+            <CardFooter>
+              <Button 
+                variant="calm" 
+                className="mt-2"
+                onClick={() => navigate('/checklist')}
+              >
+                View my checklist
+              </Button>
+            </CardFooter>
+          )}
+        </Card>
+      )}
       
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        {hasOnboarded && (
+          <Link to="/checklist" className="block">
+            <Card className="hover:shadow-md transition-shadow">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg flex items-center">
+                    <CheckSquare className="h-5 w-5 mr-2 text-calm-500" />
+                    Checklist
+                  </CardTitle>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold">{loading ? '...' : `${stats.checklistCompleted}/${stats.checklistTotal}`}</p>
+                <p className="text-sm text-muted-foreground">Tasks completed</p>
+                {stats.checklistTotal > 0 && (
+                  <div className="mt-2 h-1 bg-gray-200 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-calm-500 transition-all duration-300"
+                      style={{ width: `${checklistProgress}%` }}
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </Link>
+        )}
+
         <Link to="/assets" className="block">
           <Card className="hover:shadow-md transition-shadow">
             <CardHeader className="pb-2">

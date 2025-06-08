@@ -9,6 +9,7 @@ import AuthPage from './pages/AuthPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import DashboardPage from './pages/DashboardPage';
 import OnboardingPage from './pages/OnboardingPage';
+import ChecklistPage from './pages/ChecklistPage';
 import AssetsPage from './pages/AssetsPage';
 import DocumentsPage from './pages/DocumentsPage';
 import WishesPage from './pages/WishesPage';
@@ -58,9 +59,10 @@ function App() {
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
         <Route path="/" element={<Layout />}>
-          <Route index element={<Navigate to="/dashboard\" replace />} />
+          <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="onboarding" element={<OnboardingPage />} />
+          <Route path="checklist" element={<ChecklistPage />} />
           <Route path="assets" element={<AssetsPage />} />
           <Route path="documents" element={<DocumentsPage />} />
           <Route path="wishes" element={<WishesPage />} />

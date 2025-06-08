@@ -200,16 +200,92 @@ export default function OnboardingPage() {
               ))}
             </div>
           </div>
+          
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+            <h3 className="font-medium mb-2 text-blue-900">What happens next?</h3>
+            <p className="text-sm text-blue-800 mb-4">
+              We'll create a personalized checklist based on your responses. You can work through it at your own pace, 
+              and we'll guide you through each step of documenting your assets, wishes, and designating executors.
+            </p>
+            <div className="space-y-2 text-sm text-blue-700">
+              <div className="flex items-center gap-2">
+                <Check className="h-4 w-4" />
+                <span>Step-by-step guidance for each task</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Check className="h-4 w-4" />
+                <span>Helpful tips and document requirements</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Check className="h-4 w-4" />
+                <span>Track your progress as you complete items</span>
+              </div>
+            </div>
+          </div>
         </div>
       )
     },
   ];
 
+  const generatePersonalizedChecklist = async () => {
+    try {
+      // Get checklist templates based on user responses
+      const { data: templates, error: templatesError } = await supabase
+        .from('checklist_templates')
+        .select('*')
+        .or(`asset_type.in.(${responses.asset_types.join(',')}),concern.in.(${responses.concerns.join(',')}),asset_type.is.null,concern.is.null`)
+        .order('category', { ascending: true })
+        .order('order_index', { ascending: true });
+
+      if (templatesError) throw templatesError;
+
+      // Filter templates based on user responses
+      const relevantTemplates = templates.filter(template => {
+        // Include general templates (no specific asset_type or concern)
+        if (!template.asset_type && !template.concern) return true;
+        
+        // Include templates matching selected asset types
+        if (template.asset_type && responses.asset_types.includes(template.asset_type)) return true;
+        
+        // Include templates matching selected concerns
+        if (template.concern && responses.concerns.includes(template.concern)) return true;
+        
+        return false;
+      });
+
+      // Create user checklist items
+      const checklistItems = relevantTemplates.map(template => ({
+        user_id: user?.id,
+        template_id: template.id,
+        category: template.category,
+        title: template.title,
+        description: template.description,
+        priority: template.priority,
+        estimated_time: template.estimated_time,
+        required_documents: template.required_documents,
+        helpful_tips: template.helpful_tips,
+        order_index: template.order_index
+      }));
+
+      // Insert checklist items
+      const { error: checklistError } = await supabase
+        .from('user_checklists')
+        .insert(checklistItems);
+
+      if (checklistError) throw checklistError;
+
+    } catch (error) {
+      console.error('Error generating checklist:', error);
+      throw error;
+    }
+  };
+
   const handleNext = async () => {
     if (currentStepIndex === steps.length - 1) {
       setLoading(true);
       try {
-        const { error } = await supabase
+        // Save onboarding responses
+        const { error: onboardingError } = await supabase
           .from('onboarding_responses')
           .insert([
             {
@@ -219,8 +295,12 @@ export default function OnboardingPage() {
             }
           ]);
 
-        if (error) throw error;
-        navigate('/dashboard');
+        if (onboardingError) throw onboardingError;
+
+        // Generate personalized checklist
+        await generatePersonalizedChecklist();
+
+        navigate('/checklist');
       } catch (error) {
         console.error('Error saving onboarding responses:', error);
       } finally {
@@ -272,10 +352,10 @@ export default function OnboardingPage() {
             {loading ? (
               <span className="flex items-center gap-2">
                 <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
-                Saving...
+                Creating your checklist...
               </span>
             ) : currentStepIndex === steps.length - 1 ? (
-              'Start Planning'
+              'Create My Checklist'
             ) : (
               <span className="flex items-center gap-2">
                 Continue
