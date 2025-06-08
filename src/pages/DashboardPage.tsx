@@ -181,7 +181,7 @@ export default function DashboardPage() {
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {hasOnboarded && (
-          <Link to="/checklist" className="block">
+          <Link to="/checklist\" className="block">
             <Card className="hover:shadow-md transition-shadow">
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
