@@ -50,9 +50,27 @@ export default function AuthPage() {
         if (signUpError) throw signUpError;
         
         if (data.user) {
+          // Send welcome email
+          try {
+            await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-welcome-email`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                email,
+                name: email.split('@')[0], // Use email prefix as name
+              }),
+            });
+          } catch (emailError) {
+            console.error('Failed to send welcome email:', emailError);
+            // Don't fail the signup if email fails
+          }
+
           toast({
-            title: "Success",
-            description: "Please check your email to verify your account.",
+            title: "Account created successfully!",
+            description: "Please check your email to verify your account. We've also sent you a welcome email with next steps.",
           });
           setMode('signin');
         }
@@ -63,16 +81,45 @@ export default function AuthPage() {
 
         if (error) throw error;
 
+        // Send custom password reset email
+        try {
+          await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-password-reset`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email,
+              resetUrl: `${window.location.origin}/auth/reset-password`,
+            }),
+          });
+        } catch (emailError) {
+          console.error('Failed to send custom password reset email:', emailError);
+          // Don't fail if custom email fails, Supabase still sends default
+        }
+
         toast({
-          title: "Success",
-          description: "Password reset instructions sent to your email.",
+          title: "Password reset email sent",
+          description: "Please check your email for password reset instructions. The link will expire in 1 hour.",
         });
         setMode('signin');
       }
     } catch (error: any) {
+      let errorMessage = error.message || 'An error occurred';
+      
+      // Provide more user-friendly error messages
+      if (error.message?.includes('Invalid login credentials')) {
+        errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+      } else if (error.message?.includes('Email not confirmed')) {
+        errorMessage = 'Please check your email and click the confirmation link before signing in.';
+      } else if (error.message?.includes('User already registered')) {
+        errorMessage = 'An account with this email already exists. Please sign in instead.';
+      }
+      
       toast({
         title: "Error",
-        description: error.message || 'An error occurred',
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -135,8 +182,14 @@ export default function AuthPage() {
                       onChange={(e) => setPassword(e.target.value)}
                       className="pl-10"
                       required
+                      minLength={6}
                     />
                   </div>
+                  {mode === 'signup' && (
+                    <p className="text-xs text-muted-foreground">
+                      Password must be at least 6 characters long
+                    </p>
+                  )}
                 </div>
               )}
               
@@ -147,8 +200,8 @@ export default function AuthPage() {
               >
                 {loading ? (
                   <span className="flex items-center">
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white\" xmlns="http://www.w3.org/2000/svg\" fill="none\" viewBox="0 0 24 24">
-                      <circle className="opacity-25\" cx="12\" cy="12\" r="10\" stroke="currentColor\" strokeWidth="4"></circle>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                     {mode === 'signin' ? 'Signing in...' : 

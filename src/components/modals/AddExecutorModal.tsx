@@ -4,6 +4,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { toast } from '../ui/toast';
 
 interface AddExecutorModalProps {
   open: boolean;
@@ -58,6 +59,15 @@ export function AddExecutorModal({ open, onOpenChange, onSuccess }: AddExecutorM
 
       if (triggerError) throw triggerError;
 
+      // Get planner's name for the invitation
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user?.id)
+        .single();
+
+      const plannerName = user?.email?.split('@')[0] || 'Someone';
+
       // Send invitation email through edge function
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-executor-invitation`, {
         method: 'POST',
@@ -68,18 +78,39 @@ export function AddExecutorModal({ open, onOpenChange, onSuccess }: AddExecutorM
         body: JSON.stringify({
           executorId: executor.id,
           email: formData.email,
-          name: formData.name
+          name: formData.name,
+          plannerName: plannerName
         })
       });
 
       if (!response.ok) {
-        throw new Error('Failed to send invitation');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send invitation');
       }
+
+      toast({
+        title: "Executor invited successfully",
+        description: `An invitation has been sent to ${formData.name} at ${formData.email}. They have 7 days to accept.`,
+      });
+
+      // Reset form
+      setFormData({
+        name: '',
+        email: '',
+        relationship: '',
+        access_level: 'standard',
+        notification_method: 'email',
+      });
 
       onSuccess();
       onOpenChange(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding executor:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to invite executor. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
