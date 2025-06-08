@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -17,6 +17,7 @@ import {
 
 export default function DashboardPage() {
   const { user, userRole } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     assets: 0,
     documents: 0,
@@ -121,8 +122,7 @@ export default function DashboardPage() {
             <Button 
               variant="calm" 
               className="mt-2"
-              as={Link}
-              to="/assets"
+              onClick={() => navigate('/assets')}
             >
               Start adding assets
             </Button>
@@ -257,8 +257,7 @@ export default function DashboardPage() {
                   variant="secondary" 
                   size="sm" 
                   className="w-full"
-                  as={Link}
-                  to="/executors"
+                  onClick={() => navigate('/executors')}
                 >
                   Add executor
                 </Button>
@@ -273,8 +272,7 @@ export default function DashboardPage() {
                   variant="secondary" 
                   size="sm" 
                   className="w-full"
-                  as={Link}
-                  to="/documents"
+                  onClick={() => navigate('/documents')}
                 >
                   Upload documents
                 </Button>
