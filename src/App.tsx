@@ -16,6 +16,7 @@ import WishesPage from './pages/WishesPage';
 import ExecutorsPage from './pages/ExecutorsPage';
 import ProfilePage from './pages/ProfilePage';
 import LegalPage from './pages/LegalPage';
+import EmailTestPage from './pages/EmailTestPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 // Auth provider
@@ -58,8 +59,9 @@ function App() {
       <Routes>
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/email-test" element={<EmailTestPage />} />
         <Route path="/" element={<Layout />}>
-          <Route index element={<Navigate to="/dashboard\" replace />} />
+          <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="onboarding" element={<OnboardingPage />} />
           <Route path="checklist" element={<ChecklistPage />} />
