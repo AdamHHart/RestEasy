@@ -39,7 +39,9 @@ serve(async (req: Request) => {
 
     // Generate a secure invitation token
     const token = crypto.randomUUID();
-    const appUrl = Deno.env.get("APP_URL") || "https://resteasy.netlify.app";
+    
+    // Use the correct app URL - this should be your actual deployed site
+    const appUrl = "https://magnificent-marzipan-daf5ed.netlify.app";
     const invitationUrl = `${appUrl}/executor/accept/${token}`;
 
     // Store the invitation token
@@ -131,6 +133,9 @@ serve(async (req: Request) => {
           <div class="footer">
             <p style="margin: 0; color: #6b7280; font-size: 14px;">
               This invitation was sent to ${email}. If you weren't expecting this invitation, please contact ${plannerName || 'the sender'} directly.
+            </p>
+            <p style="margin: 10px 0 0 0; color: #6b7280; font-size: 12px;">
+              Invitation link: ${invitationUrl}
             </p>
           </div>
         </div>
