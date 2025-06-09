@@ -25,7 +25,7 @@ serve(async (req: Request) => {
     if (!executorId || !email || !name) {
       return new Response(
         JSON.stringify({
-          error: "Missing required fields",
+          error: "Missing required fields: executorId, email, and name are required",
         }),
         {
           status: 400,
@@ -54,6 +54,7 @@ serve(async (req: Request) => {
       ]);
 
     if (inviteError) {
+      console.error("Error storing invitation:", inviteError);
       throw inviteError;
     }
 
@@ -137,23 +138,31 @@ serve(async (req: Request) => {
       </html>
     `;
 
-    // Send email using the send-email function
-    const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
-      method: 'POST',
+    // Send email directly using Resend API
+    const resendApiKey = "re_NkHUzen8_NQLt4whNQbqWhcYgmRTynzRm";
+    
+    const emailResponse = await fetch("https://api.resend.com/emails", {
+      method: "POST",
       headers: {
-        'Authorization': `Bearer ${supabaseKey}`,
-        'Content-Type': 'application/json',
+        "Authorization": `Bearer ${resendApiKey}`,
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        to: email,
+        from: "onboarding@resend.dev",
+        to: [email],
         subject: `You've been invited as an executor by ${plannerName || 'someone'}`,
         html,
       }),
     });
 
     if (!emailResponse.ok) {
-      throw new Error('Failed to send executor invitation email');
+      const errorText = await emailResponse.text();
+      console.error("Resend API error:", errorText);
+      throw new Error(`Failed to send email: ${errorText}`);
     }
+
+    const emailResult = await emailResponse.json();
+    console.log("Email sent successfully:", emailResult);
 
     // Log the activity
     await supabase
@@ -170,6 +179,7 @@ serve(async (req: Request) => {
         success: true,
         message: "Invitation sent successfully",
         invitationUrl,
+        emailId: emailResult.id,
       }),
       {
         status: 200,
@@ -184,6 +194,7 @@ serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         error: error.message,
+        success: false,
       }),
       {
         status: 500,

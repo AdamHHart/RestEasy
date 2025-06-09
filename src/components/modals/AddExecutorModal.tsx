@@ -19,8 +19,6 @@ export function AddExecutorModal({ open, onOpenChange, onSuccess }: AddExecutorM
     name: '',
     email: '',
     relationship: '',
-    access_level: 'standard',
-    notification_method: 'email',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -43,7 +41,12 @@ export function AddExecutorModal({ open, onOpenChange, onSuccess }: AddExecutorM
         .select()
         .single();
 
-      if (executorError) throw executorError;
+      if (executorError) {
+        console.error('Error creating executor:', executorError);
+        throw executorError;
+      }
+
+      console.log('Executor created:', executor);
 
       // Create trigger event for this executor
       const { error: triggerError } = await supabase
@@ -57,16 +60,15 @@ export function AddExecutorModal({ open, onOpenChange, onSuccess }: AddExecutorM
           }
         ]);
 
-      if (triggerError) throw triggerError;
+      if (triggerError) {
+        console.error('Error creating trigger event:', triggerError);
+        throw triggerError;
+      }
 
       // Get planner's name for the invitation
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user?.id)
-        .single();
-
       const plannerName = user?.email?.split('@')[0] || 'Someone';
+
+      console.log('Sending invitation email...');
 
       // Send invitation email through edge function
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-executor-invitation`, {
@@ -83,14 +85,21 @@ export function AddExecutorModal({ open, onOpenChange, onSuccess }: AddExecutorM
         })
       });
 
+      const responseData = await response.json();
+      console.log('Email response:', responseData);
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to send invitation');
+        console.error('Email sending failed:', responseData);
+        throw new Error(responseData.error || 'Failed to send invitation email');
+      }
+
+      if (!responseData.success) {
+        throw new Error(responseData.error || 'Failed to send invitation email');
       }
 
       toast({
-        title: "Executor invited successfully",
-        description: `An invitation has been sent to ${formData.name} at ${formData.email}. They have 7 days to accept.`,
+        title: "Executor invited successfully! ✅",
+        description: `An invitation email has been sent to ${formData.name} at ${formData.email}. They have 7 days to accept the invitation.`,
       });
 
       // Reset form
@@ -98,8 +107,6 @@ export function AddExecutorModal({ open, onOpenChange, onSuccess }: AddExecutorM
         name: '',
         email: '',
         relationship: '',
-        access_level: 'standard',
-        notification_method: 'email',
       });
 
       onSuccess();
@@ -107,7 +114,7 @@ export function AddExecutorModal({ open, onOpenChange, onSuccess }: AddExecutorM
     } catch (error: any) {
       console.error('Error adding executor:', error);
       toast({
-        title: "Error",
+        title: "Error sending invitation",
         description: error.message || "Failed to invite executor. Please try again.",
         variant: "destructive",
       });
@@ -124,7 +131,7 @@ export function AddExecutorModal({ open, onOpenChange, onSuccess }: AddExecutorM
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Full Name</label>
+            <label className="block text-sm font-medium mb-1">Full Name *</label>
             <Input
               required
               value={formData.name}
@@ -134,7 +141,7 @@ export function AddExecutorModal({ open, onOpenChange, onSuccess }: AddExecutorM
           </div>
           
           <div>
-            <label className="block text-sm font-medium mb-1">Email Address</label>
+            <label className="block text-sm font-medium mb-1">Email Address *</label>
             <Input
               type="email"
               required
@@ -153,36 +160,21 @@ export function AddExecutorModal({ open, onOpenChange, onSuccess }: AddExecutorM
             />
           </div>
           
-          <div>
-            <label className="block text-sm font-medium mb-1">Access Level</label>
-            <select
-              className="w-full rounded-md border border-input bg-background px-3 py-2"
-              value={formData.access_level}
-              onChange={(e) => setFormData({ ...formData, access_level: e.target.value })}
-            >
-              <option value="standard">Standard Access</option>
-              <option value="limited">Limited Access</option>
-              <option value="full">Full Access</option>
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium mb-1">Notification Method</label>
-            <select
-              className="w-full rounded-md border border-input bg-background px-3 py-2"
-              value={formData.notification_method}
-              onChange={(e) => setFormData({ ...formData, notification_method: e.target.value })}
-            >
-              <option value="email">Email Only</option>
-              <option value="sms">SMS + Email</option>
-            </select>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h4 className="font-medium text-blue-900 mb-2">📧 What happens next?</h4>
+            <ul className="text-sm text-blue-800 space-y-1">
+              <li>• An invitation email will be sent to {formData.email || 'the executor'}</li>
+              <li>• They'll have 7 days to accept the invitation</li>
+              <li>• Once accepted, they'll have access to your planning documents</li>
+              <li>• You can revoke access at any time</li>
+            </ul>
           </div>
           
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || !formData.name || !formData.email}>
               {loading ? 'Sending Invitation...' : 'Send Invitation'}
             </Button>
           </DialogFooter>
