@@ -35,6 +35,13 @@ export function AuthProvider({
           return;
         }
 
+        // Check for pending executor token
+        const pendingToken = localStorage.getItem('pendingExecutorToken');
+        if (pendingToken) {
+          await handlePendingExecutorInvitation(pendingToken);
+          localStorage.removeItem('pendingExecutorToken');
+        }
+
         // Fetch user profile from our profiles table
         const { data: profile, error: fetchError } = await supabase
           .from('profiles')
@@ -88,6 +95,78 @@ export function AuthProvider({
 
     getUserProfile();
   }, [user, navigate]);
+
+  const handlePendingExecutorInvitation = async (token: string) => {
+    try {
+      // Get the invitation details
+      const { data: invitation, error: inviteError } = await supabase
+        .from('executor_invitations')
+        .select(`
+          id,
+          executor:executors!inner(
+            id,
+            name,
+            email,
+            planner_id
+          )
+        `)
+        .eq('token', token)
+        .single();
+
+      if (inviteError || !invitation) {
+        console.error('Error fetching invitation:', inviteError);
+        return;
+      }
+
+      // Check if the signed-in user's email matches the invitation
+      if (user?.email !== invitation.executor.email) {
+        toast({
+          title: "Email mismatch",
+          description: "The signed-in account doesn't match the invitation email.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Update executor status to active
+      const { error: updateError } = await supabase
+        .from('executors')
+        .update({ 
+          status: 'active',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', invitation.executor.id);
+
+      if (updateError) {
+        console.error('Error updating executor status:', updateError);
+        return;
+      }
+
+      // Delete the invitation token (it's been used)
+      await supabase
+        .from('executor_invitations')
+        .delete()
+        .eq('token', token);
+
+      // Log the acceptance
+      await supabase
+        .from('activity_log')
+        .insert([
+          {
+            user_id: invitation.executor.planner_id,
+            action_type: 'executor_accepted',
+            details: `Executor ${invitation.executor.name} accepted invitation (existing user)`,
+          }
+        ]);
+
+      toast({
+        title: "Executor invitation accepted! ✅",
+        description: "You now have executor access. You can access planning documents when needed.",
+      });
+    } catch (error) {
+      console.error('Error handling pending executor invitation:', error);
+    }
+  };
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
