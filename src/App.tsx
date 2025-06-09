@@ -66,7 +66,7 @@ function App() {
         
         {/* Protected routes - these require authentication */}
         <Route path="/" element={<Layout />}>
-          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route index element={<Navigate to="/dashboard\" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="onboarding" element={<OnboardingPage />} />
           <Route path="checklist" element={<ChecklistPage />} />
