@@ -58,12 +58,15 @@ function App() {
   return (
     <AuthProvider session={session}>
       <Routes>
+        {/* Public routes - these don't require authentication */}
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
         <Route path="/executor/accept/:token" element={<ExecutorAcceptPage />} />
         <Route path="/email-test" element={<EmailTestPage />} />
+        
+        {/* Protected routes - these require authentication */}
         <Route path="/" element={<Layout />}>
-          <Route index element={<Navigate to="/dashboard\" replace />} />
+          <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="onboarding" element={<OnboardingPage />} />
           <Route path="checklist" element={<ChecklistPage />} />
