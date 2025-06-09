@@ -27,7 +27,8 @@ export default function ExecutorAcceptPage() {
   const [accepting, setAccepting] = useState(false);
   const [invitation, setInvitation] = useState<InvitationData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [step, setStep] = useState<'verify' | 'create-account' | 'complete'>('verify');
+  const [step, setStep] = useState<'verify' | 'existing-user' | 'create-account' | 'complete'>('verify');
+  const [userExists, setUserExists] = useState(false);
   const [accountData, setAccountData] = useState({
     email: '',
     password: '',
@@ -79,9 +80,20 @@ export default function ExecutorAcceptPage() {
       if (data.executor.status === 'active') {
         setStep('complete');
         setInvitation({ ...data, valid: true });
+        return;
+      }
+
+      setInvitation({ ...data, valid: true });
+      setAccountData(prev => ({ ...prev, email: data.executor.email }));
+
+      // Check if user already exists in auth.users
+      const { data: existingUser } = await supabase.auth.admin.getUserByEmail(data.executor.email);
+      
+      if (existingUser.user) {
+        setUserExists(true);
+        setStep('existing-user');
       } else {
-        setInvitation({ ...data, valid: true });
-        setAccountData(prev => ({ ...prev, email: data.executor.email }));
+        setUserExists(false);
         setStep('create-account');
       }
     } catch (err: any) {
@@ -91,7 +103,73 @@ export default function ExecutorAcceptPage() {
     }
   };
 
-  const handleAcceptInvitation = async () => {
+  const handleExistingUserAccept = async () => {
+    if (!invitation) return;
+
+    try {
+      setAccepting(true);
+
+      // For existing users, we just need to:
+      // 1. Update executor status to active
+      // 2. Ensure they have executor role in profiles (they might already have planner role)
+
+      // Update executor status to active
+      const { error: updateError } = await supabase
+        .from('executors')
+        .update({ 
+          status: 'active',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', invitation.executor.id);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      // Check if user has a profile, if not create one
+      // If they do have a profile, we don't need to change their role since they can be both planner and executor
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', invitation.executor.planner_id) // This should be the user's actual ID
+        .single();
+
+      // Delete the invitation token (it's been used)
+      await supabase
+        .from('executor_invitations')
+        .delete()
+        .eq('token', token);
+
+      // Log the acceptance
+      await supabase
+        .from('activity_log')
+        .insert([
+          {
+            user_id: invitation.executor.planner_id,
+            action_type: 'executor_accepted',
+            details: `Executor ${invitation.executor.name} accepted invitation (existing user)`,
+          }
+        ]);
+
+      toast({
+        title: "Invitation accepted! ✅",
+        description: "You can now access the planning documents as an executor. Sign in to your existing account to get started.",
+      });
+
+      setStep('complete');
+    } catch (error: any) {
+      console.error('Error accepting invitation:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to accept invitation. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setAccepting(false);
+    }
+  };
+
+  const handleCreateAccountAccept = async () => {
     if (!invitation) return;
 
     try {
@@ -167,7 +245,7 @@ export default function ExecutorAcceptPage() {
           {
             user_id: invitation.executor.planner_id,
             action_type: 'executor_accepted',
-            details: `Executor ${invitation.executor.name} accepted invitation`,
+            details: `Executor ${invitation.executor.name} accepted invitation (new user)`,
           }
         ]);
 
@@ -231,6 +309,77 @@ export default function ExecutorAcceptPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-calm-50 to-white flex items-center justify-center p-4">
       <div className="w-full max-w-2xl">
+        {step === 'existing-user' && invitation && (
+          <Card className="shadow-lg">
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center">
+                <UserCheck className="h-8 w-8 text-blue-600" />
+              </div>
+              <CardTitle className="text-2xl">Accept Executor Invitation</CardTitle>
+              <CardDescription>
+                We found an existing Rest Easy account with this email address.
+              </CardDescription>
+            </CardHeader>
+            
+            <CardContent className="space-y-6">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="font-medium text-blue-900 mb-2">Invitation Details</h3>
+                <div className="space-y-2 text-sm text-blue-800">
+                  <div className="flex justify-between">
+                    <span>Your Name:</span>
+                    <span className="font-medium">{invitation.executor.name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Email:</span>
+                    <span className="font-medium">{invitation.executor.email}</span>
+                  </div>
+                  {invitation.executor.relationship && (
+                    <div className="flex justify-between">
+                      <span>Relationship:</span>
+                      <span className="font-medium">{invitation.executor.relationship}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <h4 className="font-medium text-green-900 mb-2">✅ Existing Account Found</h4>
+                <p className="text-sm text-green-800">
+                  Since you already have a Rest Easy account, we'll simply add the executor role to your existing account. 
+                  You can be both a planner for your own affairs and an executor for others.
+                </p>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <h4 className="font-medium text-amber-900 mb-2">⚠️ Important Responsibilities</h4>
+                <ul className="text-sm text-amber-800 space-y-1">
+                  <li>• You'll have access to sensitive planning documents</li>
+                  <li>• You'll be responsible for carrying out their final wishes</li>
+                  <li>• This access will only be activated when needed</li>
+                  <li>• You can decline this responsibility at any time</li>
+                </ul>
+              </div>
+            </CardContent>
+
+            <CardFooter className="flex gap-3">
+              <Button 
+                variant="outline" 
+                className="flex-1"
+                onClick={() => navigate('/auth')}
+              >
+                Decline
+              </Button>
+              <Button 
+                className="flex-1 bg-calm-500 hover:bg-calm-600"
+                onClick={handleExistingUserAccept}
+                disabled={accepting}
+              >
+                {accepting ? 'Accepting...' : 'Accept Invitation'}
+              </Button>
+            </CardFooter>
+          </Card>
+        )}
+
         {step === 'create-account' && invitation && (
           <Card className="shadow-lg">
             <CardHeader className="text-center">
@@ -340,7 +489,7 @@ export default function ExecutorAcceptPage() {
               </Button>
               <Button 
                 className="flex-1 bg-calm-500 hover:bg-calm-600"
-                onClick={handleAcceptInvitation}
+                onClick={handleCreateAccountAccept}
                 disabled={accepting || !accountData.password || !accountData.confirmPassword}
               >
                 {accepting ? 'Creating Account...' : 'Accept & Create Account'}
@@ -355,17 +504,22 @@ export default function ExecutorAcceptPage() {
               <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-green-100 flex items-center justify-center">
                 <CheckCircle className="h-8 w-8 text-green-600" />
               </div>
-              <CardTitle className="text-2xl text-green-900">Welcome to Rest Easy!</CardTitle>
+              <CardTitle className="text-2xl text-green-900">
+                {userExists ? 'Invitation Accepted!' : 'Welcome to Rest Easy!'}
+              </CardTitle>
               <CardDescription>
-                Your executor account has been successfully created.
+                {userExists 
+                  ? 'The executor role has been added to your existing account.'
+                  : 'Your executor account has been successfully created.'
+                }
               </CardDescription>
             </CardHeader>
             
             <CardContent className="space-y-6">
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <h3 className="font-medium text-green-900 mb-2">✅ Account Created Successfully</h3>
+                <h3 className="font-medium text-green-900 mb-2">✅ Success!</h3>
                 <p className="text-sm text-green-800">
-                  You now have access to Rest Easy as an executor. You'll be able to access 
+                  You now have executor access in Rest Easy. You'll be able to access 
                   planning documents and carry out responsibilities when the time comes.
                 </p>
               </div>
