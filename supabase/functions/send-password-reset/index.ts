@@ -48,13 +48,13 @@ serve(async (req: Request) => {
         <div class="container">
           <div class="header">
             <h1 style="margin: 0; font-size: 28px;">🔐 Password Reset</h1>
-            <p style="margin: 10px 0 0 0; opacity: 0.9;">Reset your Rest Easy password</p>
+            <p style="margin: 10px 0 0 0; opacity: 0.9;">Reset your Ever Ease password</p>
           </div>
           
           <div class="content">
             <h2>Password Reset Request</h2>
             
-            <p>We received a request to reset the password for your Rest Easy account associated with <strong>${email}</strong>.</p>
+            <p>We received a request to reset the password for your Ever Ease account associated with <strong>${email}</strong>.</p>
             
             <div style="text-align: center; margin: 30px 0;">
               <a href="${resetUrl}" class="button">Reset Your Password</a>
@@ -66,7 +66,7 @@ serve(async (req: Request) => {
                 <li>This link will expire in 1 hour for your security</li>
                 <li>If you didn't request this reset, please ignore this email</li>
                 <li>Never share this link with anyone</li>
-                <li>Make sure you're on the official Rest Easy website when entering your new password</li>
+                <li>Make sure you're on the official Ever Ease website when entering your new password</li>
               </ul>
             </div>
             
@@ -77,7 +77,7 @@ serve(async (req: Request) => {
             
             <p>For security reasons, this link will expire in 1 hour. If you need a new reset link, please visit the login page and click "Forgot Password" again.</p>
             
-            <p>Best regards,<br>The Rest Easy Team</p>
+            <p>Best regards,<br>The Ever Ease Team</p>
           </div>
           
           <div class="footer">
@@ -99,7 +99,7 @@ serve(async (req: Request) => {
       },
       body: JSON.stringify({
         to: email,
-        subject: 'Reset Your Rest Easy Password',
+        subject: 'Reset Your Ever Ease Password',
         html,
       }),
     });

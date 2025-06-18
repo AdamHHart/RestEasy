@@ -36,7 +36,7 @@ export default function OnboardingPage() {
   const steps: OnboardingStep[] = [
     {
       id: 'welcome',
-      title: 'Welcome to Rest Easy',
+      title: 'Welcome to Ever Ease',
       description: "Let's create your personalized end-of-life plan together.",
       component: (
         <div className="space-y-6">

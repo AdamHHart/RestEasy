@@ -25,6 +25,9 @@ import NotFoundPage from './pages/NotFoundPage';
 // Auth provider
 import { AuthProvider } from './contexts/AuthContext';
 
+// Toast system
+import { Toaster } from './components/ui/toast';
+
 function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -83,6 +86,7 @@ function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
+      <Toaster />
     </AuthProvider>
   );
 }

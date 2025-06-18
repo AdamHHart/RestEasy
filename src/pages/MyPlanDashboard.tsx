@@ -127,7 +127,7 @@ export default function MyPlanDashboard() {
       {!hasOnboarded && (
         <Card className="border-calm-300 bg-gradient-to-r from-calm-100 to-white">
           <CardHeader>
-            <CardTitle className="text-xl">Welcome to Rest Easy!</CardTitle>
+            <CardTitle className="text-xl">Welcome to Ever Ease!</CardTitle>
             <CardDescription>
               Let's get you started with a quick setup to create your personalized planning checklist.
             </CardDescription>

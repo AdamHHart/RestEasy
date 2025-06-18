@@ -24,6 +24,10 @@ export function AddDocumentModal({ open, onOpenChange, onSuccess }: AddDocumentM
     name: '',
     description: '',
     category: 'legal',
+    contact_name: '',
+    contact_email: '',
+    contact_phone: '',
+    contact_organization: '',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,27 +39,63 @@ export function AddDocumentModal({ open, onOpenChange, onSuccess }: AddDocumentM
 
       // Handle file upload
       if (selectedFile || scannedImage) {
-        const file = selectedFile || dataURLtoFile(scannedImage!, 'scanned_document.jpg');
-        const fileName = `${user!.id}/${Date.now()}-${file.name}`;
+        let fileToUpload: File;
+        
+        if (selectedFile) {
+          fileToUpload = selectedFile;
+        } else if (scannedImage) {
+          fileToUpload = dataURLtoFile(scannedImage, 'scanned_document.jpg');
+        } else {
+          throw new Error('No file selected');
+        }
+
+        // Create a unique file name with proper extension
+        const fileExtension = fileToUpload.name.split('.').pop() || 'jpg';
+        const fileName = `${user!.id}/${Date.now()}-${formData.name.replace(/[^a-zA-Z0-9]/g, '_')}.${fileExtension}`;
+        
+        console.log('Uploading file:', fileName, 'Size:', fileToUpload.size, 'Type:', fileToUpload.type);
         
         const { error: uploadError, data } = await supabase.storage
           .from('documents')
-          .upload(fileName, file);
+          .upload(fileName, fileToUpload, {
+            cacheControl: '3600',
+            upsert: false
+          });
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          throw uploadError;
+        }
+
+        if (!data?.path) {
+          throw new Error('Upload succeeded but no file path returned');
+        }
+
         file_path = data.path;
+        console.log('File uploaded successfully to:', file_path);
       }
 
       // Create document record
-      const { error: docError } = await supabase.from('documents').insert([
-        {
-          user_id: user?.id,
-          ...formData,
-          file_path,
-        },
-      ]);
+      const documentData = {
+        user_id: user?.id,
+        name: formData.name,
+        description: formData.description || null,
+        category: formData.category,
+        file_path: file_path,
+        contact_name: formData.contact_name || null,
+        contact_email: formData.contact_email || null,
+        contact_phone: formData.contact_phone || null,
+        contact_organization: formData.contact_organization || null,
+      };
 
-      if (docError) throw docError;
+      console.log('Creating document record:', documentData);
+
+      const { error: docError } = await supabase.from('documents').insert([documentData]);
+
+      if (docError) {
+        console.error('Document creation error:', docError);
+        throw docError;
+      }
 
       toast({
         title: "Success",
@@ -70,14 +110,31 @@ export function AddDocumentModal({ open, onOpenChange, onSuccess }: AddDocumentM
         name: '',
         description: '',
         category: 'legal',
+        contact_name: '',
+        contact_email: '',
+        contact_phone: '',
+        contact_organization: '',
       });
       setScannedImage(null);
       setSelectedFile(null);
     } catch (error) {
       console.error('Error adding document:', error);
+      
+      let errorMessage = "Failed to upload document. Please try again.";
+      
+      if (error instanceof Error) {
+        if (error.message.includes('storage')) {
+          errorMessage = "Storage error. Please check your file and try again.";
+        } else if (error.message.includes('size')) {
+          errorMessage = "File is too large. Please use a file smaller than 10MB.";
+        } else if (error.message.includes('type')) {
+          errorMessage = "Unsupported file type. Please use PDF, JPG, or PNG files.";
+        }
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to upload document. Please try again.",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -94,6 +151,8 @@ export function AddDocumentModal({ open, onOpenChange, onSuccess }: AddDocumentM
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      console.log('File selected:', file.name, 'Size:', file.size, 'Type:', file.type);
+      
       // Validate file size (10MB limit)
       if (file.size > 10 * 1024 * 1024) {
         toast({
@@ -103,6 +162,26 @@ export function AddDocumentModal({ open, onOpenChange, onSuccess }: AddDocumentM
         });
         return;
       }
+
+      // Validate file type
+      const allowedTypes = [
+        'application/pdf',
+        'image/jpeg',
+        'image/jpg', 
+        'image/png',
+        'image/gif',
+        'image/webp'
+      ];
+      
+      if (!allowedTypes.includes(file.type)) {
+        toast({
+          title: "Error",
+          description: "Please select a PDF, JPG, PNG, or GIF file",
+          variant: "destructive"
+        });
+        return;
+      }
+
       setSelectedFile(file);
       setScannedImage(null);
     }
@@ -131,18 +210,35 @@ export function AddDocumentModal({ open, onOpenChange, onSuccess }: AddDocumentM
       )}
       
       <Dialog open={open && !showScanner} onOpenChange={onOpenChange}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Upload New Document</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Document Name</label>
-              <Input
-                required
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Document Name *</label>
+                <Input
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Document title"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">Category</label>
+                <select
+                  className="w-full rounded-md border border-input bg-background px-3 py-2"
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                >
+                  <option value="legal">Legal</option>
+                  <option value="financial">Financial</option>
+                  <option value="health">Health</option>
+                  <option value="personal">Personal</option>
+                </select>
+              </div>
             </div>
             
             <div>
@@ -150,25 +246,12 @@ export function AddDocumentModal({ open, onOpenChange, onSuccess }: AddDocumentM
               <Input
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Brief description of the document"
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium mb-1">Category</label>
-              <select
-                className="w-full rounded-md border border-input bg-background px-3 py-2"
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              >
-                <option value="legal">Legal</option>
-                <option value="financial">Financial</option>
-                <option value="health">Health</option>
-                <option value="personal">Personal</option>
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-1">Document</label>
+              <label className="block text-sm font-medium mb-1">Document File</label>
               <div className="space-y-3">
                 {scannedImage ? (
                   <div className="relative aspect-[4/3] bg-gray-100 rounded-lg overflow-hidden">
@@ -193,7 +276,7 @@ export function AddDocumentModal({ open, onOpenChange, onSuccess }: AddDocumentM
                   <div className="p-4 bg-gray-50 rounded-lg">
                     <p className="text-sm font-medium">{selectedFile.name}</p>
                     <p className="text-xs text-gray-500">
-                      {(selectedFile.size / 1024 / 1024).toFixed(2)}MB
+                      {(selectedFile.size / 1024 / 1024).toFixed(2)}MB • {selectedFile.type}
                     </p>
                     <Button
                       type="button"
@@ -209,7 +292,7 @@ export function AddDocumentModal({ open, onOpenChange, onSuccess }: AddDocumentM
                   <div className="flex gap-2">
                     <Input
                       type="file"
-                      accept="image/*,application/pdf"
+                      accept="image/*,application/pdf,.doc,.docx"
                       onChange={handleFileChange}
                     />
                     <Button
@@ -221,6 +304,55 @@ export function AddDocumentModal({ open, onOpenChange, onSuccess }: AddDocumentM
                     </Button>
                   </div>
                 )}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Supported formats: PDF, JPG, PNG, GIF, DOC, DOCX (max 10MB)
+              </p>
+            </div>
+
+            <div className="border-t pt-4">
+              <h3 className="text-lg font-medium mb-3">Contact/Representative Information</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Contact Name</label>
+                  <Input
+                    value={formData.contact_name}
+                    onChange={(e) => setFormData({ ...formData, contact_name: e.target.value })}
+                    placeholder="Representative's full name"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium mb-1">Organization/Company</label>
+                  <Input
+                    value={formData.contact_organization}
+                    onChange={(e) => setFormData({ ...formData, contact_organization: e.target.value })}
+                    placeholder="Law firm, company, or organization"
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Email</label>
+                  <Input
+                    type="email"
+                    value={formData.contact_email}
+                    onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
+                    placeholder="contact@example.com"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium mb-1">Phone</label>
+                  <Input
+                    type="tel"
+                    value={formData.contact_phone}
+                    onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
+                    placeholder="(555) 123-4567"
+                  />
+                </div>
               </div>
             </div>
             

@@ -40,8 +40,8 @@ serve(async (req: Request) => {
     // Generate a secure invitation token
     const token = crypto.randomUUID();
     
-    // Use the correct app URL - this should be your actual deployed site
-    const appUrl = "https://magnificent-marzipan-daf5ed.netlify.app";
+    // Use the current domain - updated to the new Netlify URL
+    const appUrl = "https://splendorous-taffy-cfab45.netlify.app";
     const invitationUrl = `${appUrl}/executor/accept/${token}`;
 
     // Store the invitation token
@@ -88,7 +88,7 @@ serve(async (req: Request) => {
           <div class="content">
             <h2>Hello ${name},</h2>
             
-            <p><strong>${plannerName || 'Someone'}</strong> has invited you to serve as an executor for their end-of-life plan through Rest Easy.</p>
+            <p><strong>${plannerName || 'Someone'}</strong> has invited you to serve as an executor for their end-of-life plan through Ever Ease.</p>
             
             <div class="info-box">
               <h3 style="margin-top: 0; color: #1d4ed8;">What does this mean?</h3>
@@ -127,7 +127,7 @@ serve(async (req: Request) => {
             
             <p>Thank you for being someone they trust during this important time.</p>
             
-            <p>Best regards,<br>The Rest Easy Team</p>
+            <p>Best regards,<br>The Ever Ease Team</p>
           </div>
           
           <div class="footer">

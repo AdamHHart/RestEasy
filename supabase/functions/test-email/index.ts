@@ -25,8 +25,8 @@ serve(async (req: Request) => {
 
     // Use the provided email or default to your email
     const recipientEmail = to || "adamhayhart@gmail.com";
-    const emailSubject = subject || "Rest Easy - Email Test";
-    const emailMessage = message || "This is a test email from Rest Easy to verify Resend integration is working!";
+    const emailSubject = subject || "Ever Ease - Email Test";
+    const emailMessage = message || "This is a test email from Ever Ease to verify Resend integration is working!";
 
     const html = `
       <!DOCTYPE html>
@@ -48,7 +48,7 @@ serve(async (req: Request) => {
         <div class="container">
           <div class="header">
             <h1 style="margin: 0; font-size: 28px;">🎉 Email Test Successful!</h1>
-            <p style="margin: 10px 0 0 0; opacity: 0.9;">Rest Easy Email Integration</p>
+            <p style="margin: 10px 0 0 0; opacity: 0.9;">Ever Ease Email Integration</p>
           </div>
           
           <div class="content">
@@ -80,12 +80,12 @@ serve(async (req: Request) => {
               <li>Password reset emails will work properly</li>
             </ul>
             
-            <p>You're all set to start sending production emails through Rest Easy!</p>
+            <p>You're all set to start sending production emails through Ever Ease!</p>
           </div>
           
           <div class="footer">
             <p style="margin: 0; color: #6b7280; font-size: 14px;">
-              This is a test email from Rest Easy. If you received this, your email integration is working perfectly!
+              This is a test email from Ever Ease. If you received this, your email integration is working perfectly!
             </p>
           </div>
         </div>

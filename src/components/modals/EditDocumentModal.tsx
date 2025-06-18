@@ -1,63 +1,87 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { toast } from '../ui/toast';
 
-interface AddAssetModalProps {
+interface Document {
+  id: string;
+  name: string;
+  description: string | null;
+  category: 'legal' | 'financial' | 'health' | 'personal';
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  contact_organization: string | null;
+}
+
+interface EditDocumentModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  document: Document | null;
 }
 
-export function AddAssetModal({ open, onOpenChange, onSuccess }: AddAssetModalProps) {
+export function EditDocumentModal({ open, onOpenChange, onSuccess, document }: EditDocumentModalProps) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    type: 'financial',
     name: '',
     description: '',
-    location: '',
-    account_number: '',
-    access_info: '',
+    category: 'legal',
     contact_name: '',
     contact_email: '',
     contact_phone: '',
     contact_organization: '',
   });
 
+  useEffect(() => {
+    if (document) {
+      setFormData({
+        name: document.name,
+        description: document.description || '',
+        category: document.category,
+        contact_name: document.contact_name || '',
+        contact_email: document.contact_email || '',
+        contact_phone: document.contact_phone || '',
+        contact_organization: document.contact_organization || '',
+      });
+    }
+  }, [document]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!document) return;
+    
     setLoading(true);
 
     try {
-      const { error } = await supabase.from('assets').insert([
-        {
-          user_id: user?.id,
+      const { error } = await supabase
+        .from('documents')
+        .update({
           ...formData,
-        },
-      ]);
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', document.id);
 
       if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Document updated successfully",
+      });
+
       onSuccess();
       onOpenChange(false);
-      
-      // Reset form
-      setFormData({
-        type: 'financial',
-        name: '',
-        description: '',
-        location: '',
-        account_number: '',
-        access_info: '',
-        contact_name: '',
-        contact_email: '',
-        contact_phone: '',
-        contact_organization: '',
-      });
     } catch (error) {
-      console.error('Error adding asset:', error);
+      console.error('Error updating document:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update document. Please try again.",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
@@ -67,31 +91,32 @@ export function AddAssetModal({ open, onOpenChange, onSuccess }: AddAssetModalPr
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add New Asset</DialogTitle>
+          <DialogTitle>Edit Document</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Asset Type</label>
-              <select
-                className="w-full rounded-md border border-input bg-background px-3 py-2"
-                value={formData.type}
-                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-              >
-                <option value="financial">Financial</option>
-                <option value="physical">Physical</option>
-                <option value="digital">Digital</option>
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-1">Name *</label>
+              <label className="block text-sm font-medium mb-1">Document Name *</label>
               <Input
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Asset name"
+                placeholder="Document title"
               />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Category</label>
+              <select
+                className="w-full rounded-md border border-input bg-background px-3 py-2"
+                value={formData.category}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              >
+                <option value="legal">Legal</option>
+                <option value="financial">Financial</option>
+                <option value="health">Health</option>
+                <option value="personal">Personal</option>
+              </select>
             </div>
           </div>
           
@@ -100,37 +125,7 @@ export function AddAssetModal({ open, onOpenChange, onSuccess }: AddAssetModalPr
             <Input
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Brief description of the asset"
-            />
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Location</label>
-              <Input
-                value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                placeholder="Physical or digital location"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-1">Account Number</label>
-              <Input
-                value={formData.account_number}
-                onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
-                placeholder="Account or reference number"
-              />
-            </div>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium mb-1">Access Information</label>
-            <textarea
-              className="w-full rounded-md border border-input bg-background px-3 py-2 min-h-[80px]"
-              value={formData.access_info}
-              onChange={(e) => setFormData({ ...formData, access_info: e.target.value })}
-              placeholder="Login details, passwords, or access instructions"
+              placeholder="Brief description of the document"
             />
           </div>
 
@@ -152,7 +147,7 @@ export function AddAssetModal({ open, onOpenChange, onSuccess }: AddAssetModalPr
                 <Input
                   value={formData.contact_organization}
                   onChange={(e) => setFormData({ ...formData, contact_organization: e.target.value })}
-                  placeholder="Bank, company, or organization name"
+                  placeholder="Law firm, company, or organization"
                 />
               </div>
             </div>
@@ -185,7 +180,7 @@ export function AddAssetModal({ open, onOpenChange, onSuccess }: AddAssetModalPr
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? 'Adding...' : 'Add Asset'}
+              {loading ? 'Updating...' : 'Update Document'}
             </Button>
           </DialogFooter>
         </form>

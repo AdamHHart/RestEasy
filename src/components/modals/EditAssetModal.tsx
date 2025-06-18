@@ -1,17 +1,33 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { toast } from '../ui/toast';
 
-interface AddAssetModalProps {
+interface Asset {
+  id: string;
+  type: 'financial' | 'physical' | 'digital';
+  name: string;
+  description: string | null;
+  location: string | null;
+  account_number: string | null;
+  access_info: string | null;
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  contact_organization: string | null;
+}
+
+interface EditAssetModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  asset: Asset | null;
 }
 
-export function AddAssetModal({ open, onOpenChange, onSuccess }: AddAssetModalProps) {
+export function EditAssetModal({ open, onOpenChange, onSuccess, asset }: EditAssetModalProps) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -27,37 +43,54 @@ export function AddAssetModal({ open, onOpenChange, onSuccess }: AddAssetModalPr
     contact_organization: '',
   });
 
+  useEffect(() => {
+    if (asset) {
+      setFormData({
+        type: asset.type,
+        name: asset.name,
+        description: asset.description || '',
+        location: asset.location || '',
+        account_number: asset.account_number || '',
+        access_info: asset.access_info || '',
+        contact_name: asset.contact_name || '',
+        contact_email: asset.contact_email || '',
+        contact_phone: asset.contact_phone || '',
+        contact_organization: asset.contact_organization || '',
+      });
+    }
+  }, [asset]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!asset) return;
+    
     setLoading(true);
 
     try {
-      const { error } = await supabase.from('assets').insert([
-        {
-          user_id: user?.id,
+      const { error } = await supabase
+        .from('assets')
+        .update({
           ...formData,
-        },
-      ]);
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', asset.id);
 
       if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Asset updated successfully",
+      });
+
       onSuccess();
       onOpenChange(false);
-      
-      // Reset form
-      setFormData({
-        type: 'financial',
-        name: '',
-        description: '',
-        location: '',
-        account_number: '',
-        access_info: '',
-        contact_name: '',
-        contact_email: '',
-        contact_phone: '',
-        contact_organization: '',
-      });
     } catch (error) {
-      console.error('Error adding asset:', error);
+      console.error('Error updating asset:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update asset. Please try again.",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
@@ -67,7 +100,7 @@ export function AddAssetModal({ open, onOpenChange, onSuccess }: AddAssetModalPr
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add New Asset</DialogTitle>
+          <DialogTitle>Edit Asset</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -185,7 +218,7 @@ export function AddAssetModal({ open, onOpenChange, onSuccess }: AddAssetModalPr
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? 'Adding...' : 'Add Asset'}
+              {loading ? 'Updating...' : 'Update Asset'}
             </Button>
           </DialogFooter>
         </form>

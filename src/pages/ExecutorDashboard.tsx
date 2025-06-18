@@ -16,8 +16,10 @@ import {
   HeartHandshake,
   Users,
   ChevronRight,
-  UserCheck
+  UserCheck,
+  Workflow
 } from 'lucide-react';
+import ExecutorWorkflow from '../components/executor/ExecutorWorkflow';
 
 interface PlannerProfile {
   id: string;
@@ -50,6 +52,8 @@ export default function ExecutorDashboard() {
     try {
       setLoading(true);
       
+      console.log('Fetching executor plans for user:', user.email);
+      
       // Get all executor roles for this user
       const { data: executorData, error } = await supabase
         .from('executors')
@@ -67,16 +71,25 @@ export default function ExecutorDashboard() {
         .eq('email', user.email)
         .eq('status', 'active');
 
-      if (error) throw error;
+      console.log('Executor query result:', { executorData, error });
+
+      if (error) {
+        console.error('Error fetching executor data:', error);
+        throw error;
+      }
 
       if (executorData && executorData.length > 0) {
+        console.log(`Found ${executorData.length} executor roles`);
+        
         // Fetch detailed stats for each planner
         const plannerProfiles = await Promise.all(
           executorData.map(async (executor) => {
             const plannerId = executor.planner_id;
             
-            // Get planner's email from auth
-            const { data: authUser } = await supabase.auth.admin.getUserById(plannerId);
+            console.log('Fetching data for planner:', plannerId);
+            
+            // Use a fallback email display instead of trying to fetch from auth.users
+            const plannerEmail = `Planner ${plannerId.slice(0, 8)}`;
             
             // Get counts for this planner
             const [
@@ -97,7 +110,7 @@ export default function ExecutorDashboard() {
 
             return {
               id: plannerId,
-              email: authUser?.user?.email || 'Unknown',
+              email: plannerEmail,
               assets_count: assets || 0,
               documents_count: documents || 0,
               wishes_count: wishes || 0,
@@ -110,10 +123,13 @@ export default function ExecutorDashboard() {
           })
         );
         
+        console.log('Planner profiles:', plannerProfiles);
         setExecutorPlans(plannerProfiles);
         if (plannerProfiles.length > 0) {
           setSelectedPlan(plannerProfiles[0]);
         }
+      } else {
+        console.log('No active executor roles found for user:', user.email);
       }
     } catch (err) {
       console.error('Error fetching executor plans:', err);
@@ -151,11 +167,24 @@ export default function ExecutorDashboard() {
             <p className="text-gray-500 mb-6">
               You'll see estate plans here when someone designates you as their executor and you accept the invitation.
             </p>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md mx-auto">
+            
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md mx-auto mb-4">
               <h4 className="font-medium text-blue-900 mb-2">What is an executor?</h4>
               <p className="text-sm text-blue-800">
                 An executor is a trusted person responsible for carrying out someone's final wishes and managing their estate after they pass away.
               </p>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 max-w-md mx-auto">
+              <h4 className="font-medium text-amber-900 mb-2">🔍 Troubleshooting</h4>
+              <p className="text-sm text-amber-800 mb-2">
+                If you recently accepted an executor invitation but don't see it here:
+              </p>
+              <ul className="text-sm text-amber-700 text-left space-y-1">
+                <li>• Try refreshing the page</li>
+                <li>• Check that you used the same email address</li>
+                <li>• Contact the person who invited you</li>
+              </ul>
             </div>
           </CardContent>
         </Card>
@@ -174,7 +203,7 @@ export default function ExecutorDashboard() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <UserCheck className="h-5 w-5 text-blue-500" />
-                    {plan.email.split('@')[0]}
+                    {plan.email.includes('@') ? plan.email.split('@')[0] : plan.email}
                   </CardTitle>
                   <CardDescription>
                     {plan.relationship} • Executor role
@@ -212,7 +241,7 @@ export default function ExecutorDashboard() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <UserCheck className="h-6 w-6 text-blue-500" />
-                  {selectedPlan.email.split('@')[0]}'s Estate Plan
+                  {selectedPlan.email.includes('@') ? selectedPlan.email.split('@')[0] : selectedPlan.email}'s Estate Plan
                 </CardTitle>
                 <CardDescription>
                   You are designated as the executor for this estate plan
@@ -220,8 +249,9 @@ export default function ExecutorDashboard() {
               </CardHeader>
               <CardContent>
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList className="grid w-full grid-cols-4">
+                  <TabsList className="grid w-full grid-cols-5">
                     <TabsTrigger value="overview">Overview</TabsTrigger>
+                    <TabsTrigger value="workflow">Workflow</TabsTrigger>
                     <TabsTrigger value="assets">Assets</TabsTrigger>
                     <TabsTrigger value="documents">Documents</TabsTrigger>
                     <TabsTrigger value="wishes">Wishes</TabsTrigger>
@@ -287,6 +317,10 @@ export default function ExecutorDashboard() {
                         <li>• Contact the planner directly if you have questions about your role</li>
                       </ul>
                     </div>
+                  </TabsContent>
+
+                  <TabsContent value="workflow" className="mt-6">
+                    <ExecutorWorkflow />
                   </TabsContent>
 
                   <TabsContent value="assets" className="mt-6">

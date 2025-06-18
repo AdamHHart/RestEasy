@@ -26,7 +26,7 @@ const toastVariants = cva(
   {
     variants: {
       variant: {
-        default: "border bg-background",
+        default: "border bg-background text-foreground",
         destructive:
           "destructive group border-destructive bg-destructive text-destructive-foreground",
       },
@@ -115,8 +115,79 @@ type ToastProps = {
   variant?: "default" | "destructive";
 };
 
+type ToastActionElement = React.ReactElement<typeof ToastAction>;
+
+const toasts: Array<{
+  id: string;
+  title?: string;
+  description?: string;
+  action?: ToastActionElement;
+  variant?: "default" | "destructive";
+}> = [];
+
+let toastCount = 0;
+
 export function toast({ title, description, variant = "default" }: ToastProps) {
-  // Implementation will be added by the toast provider
+  const id = (++toastCount).toString();
+  const newToast = {
+    id,
+    title,
+    description,
+    variant,
+  };
+  
+  toasts.push(newToast);
+  
+  // Trigger a custom event to notify the ToastProvider
+  window.dispatchEvent(new CustomEvent('toast', { detail: newToast }));
+  
+  // Auto-remove after 5 seconds
+  setTimeout(() => {
+    const index = toasts.findIndex(t => t.id === id);
+    if (index > -1) {
+      toasts.splice(index, 1);
+      window.dispatchEvent(new CustomEvent('toast-remove', { detail: { id } }));
+    }
+  }, 5000);
+}
+
+export function Toaster() {
+  const [toastList, setToastList] = React.useState<typeof toasts>([]);
+
+  React.useEffect(() => {
+    const handleToast = (event: CustomEvent) => {
+      setToastList(prev => [...prev, event.detail]);
+    };
+
+    const handleToastRemove = (event: CustomEvent) => {
+      setToastList(prev => prev.filter(t => t.id !== event.detail.id));
+    };
+
+    window.addEventListener('toast', handleToast as EventListener);
+    window.addEventListener('toast-remove', handleToastRemove as EventListener);
+
+    return () => {
+      window.removeEventListener('toast', handleToast as EventListener);
+      window.removeEventListener('toast-remove', handleToastRemove as EventListener);
+    };
+  }, []);
+
+  return (
+    <ToastProvider>
+      {toastList.map((toastItem) => (
+        <Toast key={toastItem.id} variant={toastItem.variant}>
+          <div className="grid gap-1">
+            {toastItem.title && <ToastTitle>{toastItem.title}</ToastTitle>}
+            {toastItem.description && (
+              <ToastDescription>{toastItem.description}</ToastDescription>
+            )}
+          </div>
+          <ToastClose />
+        </Toast>
+      ))}
+      <ToastViewport />
+    </ToastProvider>
+  );
 }
 
 export {

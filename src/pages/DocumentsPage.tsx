@@ -6,6 +6,8 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { PlusCircle, Trash2, Edit, FileText, Download } from 'lucide-react';
 import { AddDocumentModal } from '../components/modals/AddDocumentModal';
+import { EditDocumentModal } from '../components/modals/EditDocumentModal';
+import { toast } from '../components/ui/toast';
 
 interface Document {
   id: string;
@@ -13,6 +15,10 @@ interface Document {
   description: string | null;
   file_path: string;
   category: 'legal' | 'financial' | 'health' | 'personal';
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  contact_organization: string | null;
   created_at: string;
 }
 
@@ -22,6 +28,8 @@ export default function DocumentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
 
   useEffect(() => {
     fetchDocuments();
@@ -42,6 +50,38 @@ export default function DocumentsPage() {
       setLoading(false);
     }
   }
+
+  const handleEdit = (document: Document) => {
+    setSelectedDocument(document);
+    setIsEditModalOpen(true);
+  };
+
+  const handleDelete = async (documentId: string) => {
+    if (!confirm('Are you sure you want to delete this document?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('documents')
+        .delete()
+        .eq('id', documentId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Document deleted successfully",
+      });
+
+      fetchDocuments();
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete document. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
 
   const getCategoryColor = (category: Document['category']) => {
     const colors = {
@@ -103,10 +143,19 @@ export default function DocumentsPage() {
                 <Button variant="ghost" size="icon">
                   <Download className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon">
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => handleEdit(document)}
+                >
                   <Edit className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" className="text-red-600">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="text-red-600"
+                  onClick={() => handleDelete(document.id)}
+                >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
@@ -114,6 +163,13 @@ export default function DocumentsPage() {
             
             {document.description && (
               <p className="text-gray-600 text-sm mb-3">{document.description}</p>
+            )}
+
+            {document.contact_name && (
+              <div className="text-sm mb-2">
+                <span className="font-medium">Contact:</span> {document.contact_name}
+                {document.contact_organization && ` (${document.contact_organization})`}
+              </div>
             )}
             
             <div className="text-xs text-gray-400 mt-4">
@@ -140,6 +196,13 @@ export default function DocumentsPage() {
         open={isAddModalOpen}
         onOpenChange={setIsAddModalOpen}
         onSuccess={fetchDocuments}
+      />
+
+      <EditDocumentModal
+        open={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+        onSuccess={fetchDocuments}
+        document={selectedDocument}
       />
     </div>
   );

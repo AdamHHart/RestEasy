@@ -1,4 +1,4 @@
-# Rest Easy - Secure End-of-Life Planning
+# Ever Ease - Secure End-of-Life Planning
 
 A comprehensive end-of-life planning platform that helps users organize their assets, documents, wishes, and designate executors with secure, encrypted storage.
 

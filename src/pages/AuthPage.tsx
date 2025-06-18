@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../components/ui/card';
-import { Lock, Mail, ShieldCheck, ArrowLeft } from 'lucide-react';
+import { Lock, Mail, ShieldCheck, ArrowLeft, AlertCircle } from 'lucide-react';
 import { toast } from '../components/ui/toast';
 
 export default function AuthPage() {
@@ -13,6 +13,7 @@ export default function AuthPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<'signin' | 'signup' | 'reset'>('signin');
+  const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -25,6 +26,7 @@ export default function AuthPage() {
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
 
     try {
       if (mode === 'signin') {
@@ -47,7 +49,16 @@ export default function AuthPage() {
           },
         });
         
-        if (signUpError) throw signUpError;
+        if (signUpError) {
+          // Handle specific "User already registered" error
+          if (signUpError.message?.includes('User already registered')) {
+            setError('An account with this email already exists. Please sign in instead.');
+            setMode('signin');
+            return;
+          }
+          // Re-throw other signup errors to be handled by the general catch block
+          throw signUpError;
+        }
         
         if (data.user) {
           // Send welcome email
@@ -113,10 +124,9 @@ export default function AuthPage() {
         errorMessage = 'Invalid email or password. Please check your credentials and try again.';
       } else if (error.message?.includes('Email not confirmed')) {
         errorMessage = 'Please check your email and click the confirmation link before signing in.';
-      } else if (error.message?.includes('User already registered')) {
-        errorMessage = 'An account with this email already exists. Please sign in instead.';
       }
       
+      setError(errorMessage);
       toast({
         title: "Error",
         description: errorMessage,
@@ -134,7 +144,7 @@ export default function AuthPage() {
           <div className="flex justify-center mb-4">
             <ShieldCheck className="h-16 w-16 text-calm-600" />
           </div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">Rest Easy</h1>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Ever Ease</h1>
           <p className="text-muted-foreground">
             Secure end-of-life planning made simple
           </p>
@@ -156,6 +166,13 @@ export default function AuthPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md flex items-center gap-2 text-red-700">
+                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                <span className="text-sm">{error}</span>
+              </div>
+            )}
+            
             <form onSubmit={handleAuth} className="space-y-4">
               <div className="space-y-2">
                 <div className="relative">
@@ -200,8 +217,8 @@ export default function AuthPage() {
               >
                 {loading ? (
                   <span className="flex items-center">
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white\" xmlns="http://www.w3.org/2000/svg\" fill="none\" viewBox="0 0 24 24">
-                      <circle className="opacity-25\" cx="12\" cy="12\" r="10\" stroke="currentColor\" strokeWidth="4"></circle>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                     {mode === 'signin' ? 'Signing in...' : 
@@ -223,7 +240,10 @@ export default function AuthPage() {
                   Don't have an account?{' '}
                   <button
                     type="button"
-                    onClick={() => setMode('signup')}
+                    onClick={() => {
+                      setMode('signup');
+                      setError(null);
+                    }}
                     className="text-calm-600 hover:underline font-medium"
                   >
                     Sign up
@@ -234,7 +254,10 @@ export default function AuthPage() {
                   Already have an account?{' '}
                   <button
                     type="button"
-                    onClick={() => setMode('signin')}
+                    onClick={() => {
+                      setMode('signin');
+                      setError(null);
+                    }}
                     className="text-calm-600 hover:underline font-medium"
                   >
                     Sign in
@@ -243,7 +266,10 @@ export default function AuthPage() {
               ) : (
                 <button
                   type="button"
-                  onClick={() => setMode('signin')}
+                  onClick={() => {
+                    setMode('signin');
+                    setError(null);
+                  }}
                   className="text-calm-600 hover:underline font-medium flex items-center gap-1"
                 >
                   <ArrowLeft className="h-4 w-4" />
@@ -254,7 +280,10 @@ export default function AuthPage() {
             {mode === 'signin' && (
               <button
                 type="button"
-                onClick={() => setMode('reset')}
+                onClick={() => {
+                  setMode('reset');
+                  setError(null);
+                }}
                 className="text-sm text-calm-600 hover:underline font-medium"
               >
                 Forgot your password?
@@ -264,7 +293,7 @@ export default function AuthPage() {
         </Card>
         
         <div className="mt-8 text-center text-sm text-muted-foreground">
-          <p>Rest Easy secures your data with end-to-end encryption</p>
+          <p>Ever Ease secures your data with end-to-end encryption</p>
         </div>
       </div>
     </div>

@@ -194,7 +194,7 @@ export default function ExecutorAcceptPage() {
         ]);
 
       toast({
-        title: "Welcome to Rest Easy! ✅",
+        title: "Welcome to Ever Ease! ✅",
         description: "Your executor account has been created successfully. Please check your email to verify your account.",
       });
 
@@ -319,7 +319,7 @@ export default function ExecutorAcceptPage() {
                       className="h-4 w-4 text-calm-600"
                     />
                     <label htmlFor="new-user" className="text-sm font-medium">
-                      I'm new to Rest Easy - Create an account
+                      I'm new to Ever Ease - Create an account
                     </label>
                   </div>
                   
@@ -333,7 +333,7 @@ export default function ExecutorAcceptPage() {
                       className="h-4 w-4 text-calm-600"
                     />
                     <label htmlFor="existing-user" className="text-sm font-medium">
-                      I already have a Rest Easy account
+                      I already have an Ever Ease account
                     </label>
                   </div>
                 </div>
@@ -421,7 +421,7 @@ export default function ExecutorAcceptPage() {
               <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-green-100 flex items-center justify-center">
                 <CheckCircle className="h-8 w-8 text-green-600" />
               </div>
-              <CardTitle className="text-2xl text-green-900">Welcome to Rest Easy!</CardTitle>
+              <CardTitle className="text-2xl text-green-900">Welcome to Ever Ease!</CardTitle>
               <CardDescription>
                 Your executor account has been successfully created.
               </CardDescription>
@@ -431,7 +431,7 @@ export default function ExecutorAcceptPage() {
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <h3 className="font-medium text-green-900 mb-2">✅ Success!</h3>
                 <p className="text-sm text-green-800">
-                  You now have executor access in Rest Easy. Please check your email to verify your account, 
+                  You now have executor access in Ever Ease. Please check your email to verify your account, 
                   then you'll be able to access planning documents and carry out responsibilities when the time comes.
                 </p>
               </div>

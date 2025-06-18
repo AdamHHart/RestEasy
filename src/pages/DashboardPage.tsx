@@ -100,10 +100,7 @@ export default function DashboardPage() {
               id,
               name,
               relationship,
-              planner:profiles!executors_planner_id_fkey (
-                id,
-                role
-              )
+              planner_id
             `)
             .eq('email', user.email)
             .eq('status', 'active');
@@ -112,10 +109,7 @@ export default function DashboardPage() {
             // Fetch stats for each planner they manage
             const plannerProfiles = await Promise.all(
               executorData.map(async (executor) => {
-                const plannerId = executor.planner.id;
-                
-                // Get planner's email
-                const { data: authUser } = await supabase.auth.admin.getUserById(plannerId);
+                const plannerId = executor.planner_id;
                 
                 // Get counts for this planner
                 const [
@@ -130,7 +124,7 @@ export default function DashboardPage() {
 
                 return {
                   id: plannerId,
-                  email: authUser?.user?.email || 'Unknown',
+                  email: `Planner ${plannerId.slice(0, 8)}...`, // Use a placeholder instead of actual email
                   assets_count: assets || 0,
                   documents_count: documents || 0,
                   wishes_count: wishes || 0,
@@ -256,7 +250,7 @@ export default function DashboardPage() {
                   <div key={plan.id} className="p-3 bg-blue-50 rounded-lg">
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="font-medium text-blue-900">{plan.email.split('@')[0]}</p>
+                        <p className="font-medium text-blue-900">{plan.email}</p>
                         <p className="text-sm text-blue-700">{plan.relationship}</p>
                       </div>
                       <div className="text-right text-sm text-blue-600">
@@ -292,7 +286,7 @@ export default function DashboardPage() {
       {!hasOnboarded && (
         <Card className="border-amber-300 bg-gradient-to-r from-amber-100 to-white">
           <CardHeader>
-            <CardTitle className="text-xl">Welcome to Rest Easy!</CardTitle>
+            <CardTitle className="text-xl">Welcome to Ever Ease!</CardTitle>
             <CardDescription>
               Let's get you started with a quick setup to create your personalized planning checklist.
             </CardDescription>

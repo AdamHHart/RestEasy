@@ -26,7 +26,7 @@ serve(async (req: Request) => {
       throw new Error("Email is required");
     }
 
-    const appUrl = Deno.env.get("APP_URL") || "https://resteasy.netlify.app";
+    const appUrl = Deno.env.get("APP_URL") || "https://everease.netlify.app";
 
     const html = `
       <!DOCTYPE html>
@@ -34,7 +34,7 @@ serve(async (req: Request) => {
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Welcome to Rest Easy</title>
+        <title>Welcome to Ever Ease</title>
         <style>
           body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -49,21 +49,21 @@ serve(async (req: Request) => {
       <body>
         <div class="container">
           <div class="header">
-            <h1 style="margin: 0; font-size: 28px;">Welcome to Rest Easy</h1>
+            <h1 style="margin: 0; font-size: 28px;">Welcome to Ever Ease</h1>
             <p style="margin: 10px 0 0 0; opacity: 0.9;">Secure end-of-life planning made simple</p>
           </div>
           
           <div class="content">
             <h2>Hello${name ? ` ${name}` : ''}!</h2>
             
-            <p>Thank you for joining Rest Easy. We're here to help you create a comprehensive end-of-life plan that gives you peace of mind and provides clear guidance for your loved ones.</p>
+            <p>Thank you for joining Ever Ease. We're here to help you create a comprehensive end-of-life plan that gives you peace of mind and provides clear guidance for your loved ones.</p>
             
             <div class="security-note">
               <h3 style="margin-top: 0; color: #059669;">🔒 Your Privacy & Security</h3>
               <p style="margin-bottom: 0;">All your information is protected with end-to-end encryption. Only you control who can access your data, and only when it's needed.</p>
             </div>
             
-            <h3>What you can do with Rest Easy:</h3>
+            <h3>What you can do with Ever Ease:</h3>
             
             <div class="feature">
               <strong>📋 Personalized Planning Checklist</strong><br>
@@ -96,12 +96,12 @@ serve(async (req: Request) => {
             
             <p>If you have any questions or need assistance, please don't hesitate to reach out to our support team.</p>
             
-            <p>Best regards,<br>The Rest Easy Team</p>
+            <p>Best regards,<br>The Ever Ease Team</p>
           </div>
           
           <div class="footer">
             <p style="margin: 0; color: #6b7280; font-size: 14px;">
-              This email was sent to ${email}. If you didn't create an account with Rest Easy, please ignore this email.
+              This email was sent to ${email}. If you didn't create an account with Ever Ease, please ignore this email.
             </p>
           </div>
         </div>
@@ -118,7 +118,7 @@ serve(async (req: Request) => {
       },
       body: JSON.stringify({
         to: email,
-        subject: 'Welcome to Rest Easy - Start Your Planning Journey',
+        subject: 'Welcome to Ever Ease - Start Your Planning Journey',
         html,
       }),
     });

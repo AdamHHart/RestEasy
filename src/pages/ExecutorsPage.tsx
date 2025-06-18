@@ -6,6 +6,8 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { PlusCircle, Trash2, Edit, Users, Mail, UserCheck, UserX, Shield } from 'lucide-react';
 import { AddExecutorModal } from '../components/modals/AddExecutorModal';
+import { EditExecutorModal } from '../components/modals/EditExecutorModal';
+import { toast } from '../components/ui/toast';
 
 interface Executor {
   id: string;
@@ -31,6 +33,8 @@ export default function ExecutorsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedExecutor, setSelectedExecutor] = useState<Executor | null>(null);
 
   useEffect(() => {
     fetchExecutors();
@@ -65,6 +69,65 @@ export default function ExecutorsPage() {
     }
   }
 
+  const handleEdit = (executor: Executor) => {
+    setSelectedExecutor(executor);
+    setIsEditModalOpen(true);
+  };
+
+  const handleRevokeAccess = async (executorId: string) => {
+    if (!confirm('Are you sure you want to revoke access for this executor?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('executors')
+        .update({ status: 'revoked' })
+        .eq('id', executorId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Executor access revoked successfully",
+      });
+
+      fetchExecutors();
+    } catch (err) {
+      console.error('Error revoking access:', err);
+      toast({
+        title: "Error",
+        description: "Failed to revoke access. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDelete = async (executorId: string) => {
+    if (!confirm('Are you sure you want to delete this executor? This action cannot be undone.')) return;
+
+    try {
+      const { error } = await supabase
+        .from('executors')
+        .delete()
+        .eq('id', executorId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Executor deleted successfully",
+      });
+
+      fetchExecutors();
+    } catch (error) {
+      console.error('Error deleting executor:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete executor. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const getStatusColor = (status: Executor['status']) => {
     const colors = {
       pending: 'bg-amber-100 text-amber-800',
@@ -82,20 +145,6 @@ export default function ExecutorsPage() {
         return <UserCheck className="h-4 w-4 text-green-600" />;
       case 'revoked':
         return <UserX className="h-4 w-4 text-red-600" />;
-    }
-  };
-
-  const handleRevokeAccess = async (executorId: string) => {
-    try {
-      const { error } = await supabase
-        .from('executors')
-        .update({ status: 'revoked' })
-        .eq('id', executorId);
-
-      if (error) throw error;
-      fetchExecutors();
-    } catch (err) {
-      setError('Failed to revoke access');
     }
   };
 
@@ -149,14 +198,18 @@ export default function ExecutorsPage() {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="ghost" size="icon">
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={() => handleEdit(executor)}
+                  >
                     <Edit className="h-4 w-4" />
                   </Button>
                   <Button 
                     variant="ghost" 
                     size="icon" 
                     className="text-red-600"
-                    onClick={() => handleRevokeAccess(executor.id)}
+                    onClick={() => handleDelete(executor.id)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -174,6 +227,17 @@ export default function ExecutorsPage() {
                 <p className="text-sm text-gray-600 mb-3">
                   Relationship: {executor.relationship}
                 </p>
+              )}
+
+              {executor.status === 'active' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-red-600 border-red-200 hover:bg-red-50"
+                  onClick={() => handleRevokeAccess(executor.id)}
+                >
+                  Revoke Access
+                </Button>
               )}
 
               {triggerEvent && (
@@ -216,6 +280,13 @@ export default function ExecutorsPage() {
         open={isAddModalOpen}
         onOpenChange={setIsAddModalOpen}
         onSuccess={fetchExecutors}
+      />
+
+      <EditExecutorModal
+        open={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+        onSuccess={fetchExecutors}
+        executor={selectedExecutor}
       />
     </div>
   );

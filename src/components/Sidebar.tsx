@@ -83,12 +83,12 @@ export default function Sidebar() {
           {logoError ? (
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-8 w-8 text-calm-600" />
-              <span className="text-xl font-semibold">Rest Easy</span>
+              <span className="text-xl font-semibold">Ever Ease</span>
             </div>
           ) : (
             <img 
-              src="/resteasy_logo.png" 
-              alt="Rest Easy" 
+              src="/everease_logo.png" 
+              alt="Ever Ease" 
               className="h-12 w-auto"
               onError={() => setLogoError(true)}
             />

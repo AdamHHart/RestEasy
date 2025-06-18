@@ -13,11 +13,13 @@ import {
   PlusCircle,
   AlertCircle,
   Check,
-  X
+  X,
+  Scale
 } from 'lucide-react';
 import { AddMedicalDirectiveModal } from '../components/modals/AddMedicalDirectiveModal';
 import { AddFuneralPreferenceModal } from '../components/modals/AddFuneralPreferenceModal';
 import { AddMessageModal } from '../components/modals/AddMessageModal';
+import { AddWillModal } from '../components/modals/AddWillModal';
 
 interface MedicalDirective {
   id: string;
@@ -53,16 +55,25 @@ interface PersonalMessage {
   draft: boolean;
 }
 
+interface Will {
+  id: string;
+  title: string;
+  content: string;
+  created_at: string;
+}
+
 export default function WishesPage() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'medical' | 'funeral' | 'messages'>('medical');
+  const [activeTab, setActiveTab] = useState<'will' | 'medical' | 'funeral' | 'messages'>('will');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
+  const [will, setWill] = useState<Will | null>(null);
   const [medicalDirectives, setMedicalDirectives] = useState<MedicalDirective | null>(null);
   const [funeralPreferences, setFuneralPreferences] = useState<FuneralPreference | null>(null);
   const [personalMessages, setPersonalMessages] = useState<PersonalMessage[]>([]);
 
+  const [isWillModalOpen, setIsWillModalOpen] = useState(false);
   const [isMedicalModalOpen, setIsMedicalModalOpen] = useState(false);
   const [isFuneralModalOpen, setIsFuneralModalOpen] = useState(false);
   const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
@@ -77,6 +88,18 @@ export default function WishesPage() {
 
     try {
       switch (activeTab) {
+        case 'will':
+          const { data: willData, error: willError } = await supabase
+            .from('wishes')
+            .select('*')
+            .eq('user_id', user?.id)
+            .eq('type', 'will')
+            .limit(1);
+          
+          if (willError) throw willError;
+          setWill(willData?.[0] || null);
+          break;
+
         case 'medical':
           const { data: medicalData, error: medicalError } = await supabase
             .from('medical_directives')
@@ -130,7 +153,15 @@ export default function WishesPage() {
           <p className="text-gray-500 mt-1">Document your preferences and messages for loved ones</p>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            variant={activeTab === 'will' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('will')}
+            className="flex items-center gap-2"
+          >
+            <Scale className="h-4 w-4" />
+            Will
+          </Button>
           <Button
             variant={activeTab === 'medical' ? 'default' : 'outline'}
             onClick={() => setActiveTab('medical')}
@@ -173,6 +204,76 @@ export default function WishesPage() {
         </div>
       ) : (
         <>
+          {activeTab === 'will' && (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Last Will and Testament</CardTitle>
+                  <CardDescription>
+                    Your legal will document outlining asset distribution and final wishes
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {will ? (
+                    <div className="space-y-4">
+                      <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Check className="h-5 w-5 text-green-600" />
+                          <h3 className="font-medium text-green-900">Will Documented</h3>
+                        </div>
+                        <p className="text-sm text-green-800">
+                          Your will has been saved and will be presented to your executor when needed.
+                        </p>
+                      </div>
+
+                      <div>
+                        <h3 className="font-medium mb-2">Document Title</h3>
+                        <p className="text-gray-600">{will.title}</p>
+                      </div>
+
+                      {will.content && will.content !== 'Will document uploaded' && (
+                        <div>
+                          <h3 className="font-medium mb-2">Will Content Preview</h3>
+                          <div className="p-4 bg-gray-50 rounded-lg max-h-40 overflow-y-auto">
+                            <p className="text-gray-600 whitespace-pre-wrap text-sm">
+                              {will.content.substring(0, 500)}
+                              {will.content.length > 500 && '...'}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="text-xs text-gray-400">
+                        Created {new Date(will.created_at).toLocaleDateString()}
+                      </div>
+
+                      <Button className="flex items-center gap-2">
+                        <Edit className="h-4 w-4" />
+                        Update Will
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <Scale className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-500 mb-4">No will documented yet</p>
+                      <p className="text-sm text-gray-400 mb-6">
+                        Your will is one of the most important documents for your executor. 
+                        It provides clear instructions on how to distribute your assets.
+                      </p>
+                      <Button 
+                        className="flex items-center gap-2"
+                        onClick={() => setIsWillModalOpen(true)}
+                      >
+                        <PlusCircle className="h-4 w-4" />
+                        Add Your Will
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
           {activeTab === 'medical' && (
             <div className="space-y-6">
               <Card>
@@ -423,6 +524,12 @@ export default function WishesPage() {
           )}
         </>
       )}
+
+      <AddWillModal
+        open={isWillModalOpen}
+        onOpenChange={setIsWillModalOpen}
+        onSuccess={handleSuccess}
+      />
 
       <AddMedicalDirectiveModal
         open={isMedicalModalOpen}

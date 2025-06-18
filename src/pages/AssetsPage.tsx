@@ -6,6 +6,8 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { PlusCircle, Trash2, Edit } from 'lucide-react';
 import { AddAssetModal } from '../components/modals/AddAssetModal';
+import { EditAssetModal } from '../components/modals/EditAssetModal';
+import { toast } from '../components/ui/toast';
 
 interface Asset {
   id: string;
@@ -15,6 +17,10 @@ interface Asset {
   location: string | null;
   account_number: string | null;
   access_info: string | null;
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  contact_organization: string | null;
   created_at: string;
 }
 
@@ -24,6 +30,8 @@ export default function AssetsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
 
   useEffect(() => {
     fetchAssets();
@@ -44,6 +52,38 @@ export default function AssetsPage() {
       setLoading(false);
     }
   }
+
+  const handleEdit = (asset: Asset) => {
+    setSelectedAsset(asset);
+    setIsEditModalOpen(true);
+  };
+
+  const handleDelete = async (assetId: string) => {
+    if (!confirm('Are you sure you want to delete this asset?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('assets')
+        .delete()
+        .eq('id', assetId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Asset deleted successfully",
+      });
+
+      fetchAssets();
+    } catch (error) {
+      console.error('Error deleting asset:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete asset. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
 
   if (loading) {
     return (
@@ -82,10 +122,19 @@ export default function AssetsPage() {
                 <p className="text-sm text-gray-500 capitalize">{asset.type}</p>
               </div>
               <div className="flex gap-2">
-                <Button variant="ghost" size="icon">
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => handleEdit(asset)}
+                >
                   <Edit className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" className="text-red-600">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="text-red-600"
+                  onClick={() => handleDelete(asset.id)}
+                >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
@@ -104,6 +153,13 @@ export default function AssetsPage() {
             {asset.account_number && (
               <div className="text-sm mb-2">
                 <span className="font-medium">Account Number:</span> {asset.account_number}
+              </div>
+            )}
+
+            {asset.contact_name && (
+              <div className="text-sm mb-2">
+                <span className="font-medium">Contact:</span> {asset.contact_name}
+                {asset.contact_organization && ` (${asset.contact_organization})`}
               </div>
             )}
             
@@ -131,6 +187,13 @@ export default function AssetsPage() {
         open={isAddModalOpen}
         onOpenChange={setIsAddModalOpen}
         onSuccess={fetchAssets}
+      />
+
+      <EditAssetModal
+        open={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+        onSuccess={fetchAssets}
+        asset={selectedAsset}
       />
     </div>
   );
