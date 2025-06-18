@@ -8,6 +8,8 @@ import Layout from './components/Layout';
 import AuthPage from './pages/AuthPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import DashboardPage from './pages/DashboardPage';
+import MyPlanDashboard from './pages/MyPlanDashboard';
+import ExecutorDashboard from './pages/ExecutorDashboard';
 import OnboardingPage from './pages/OnboardingPage';
 import ChecklistPage from './pages/ChecklistPage';
 import AssetsPage from './pages/AssetsPage';
@@ -66,8 +68,10 @@ function App() {
         
         {/* Protected routes - these require authentication */}
         <Route path="/" element={<Layout />}>
-          <Route index element={<Navigate to="/dashboard\" replace />} />
+          <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="my-plan" element={<MyPlanDashboard />} />
+          <Route path="executor-dashboard" element={<ExecutorDashboard />} />
           <Route path="onboarding" element={<OnboardingPage />} />
           <Route path="checklist" element={<ChecklistPage />} />
           <Route path="assets" element={<AssetsPage />} />

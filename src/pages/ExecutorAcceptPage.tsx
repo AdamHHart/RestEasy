@@ -101,7 +101,6 @@ export default function ExecutorAcceptPage() {
 
       if (accountData.isExistingUser) {
         // Handle existing user - they need to sign in first
-        // We'll redirect them to sign in and then complete the process
         toast({
           title: "Please sign in",
           description: "Sign in to your existing account to accept this executor invitation.",
@@ -149,6 +148,19 @@ export default function ExecutorAcceptPage() {
 
       if (!authData.user) {
         throw new Error('Failed to create account');
+      }
+
+      // Create or update profile for the new user
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: authData.user.id,
+          role: 'executor'
+        });
+
+      if (profileError) {
+        console.error('Error creating profile:', profileError);
+        // Don't fail the process if profile creation fails
       }
 
       // Update executor status to active

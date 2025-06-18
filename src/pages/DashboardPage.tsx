@@ -13,8 +13,20 @@ import {
   ShieldCheck,
   AlertCircle,
   CheckCircle2,
-  CheckSquare
+  CheckSquare,
+  UserCheck,
+  Crown
 } from 'lucide-react';
+
+interface PlannerProfile {
+  id: string;
+  email: string;
+  assets_count: number;
+  documents_count: number;
+  wishes_count: number;
+  executor_name: string;
+  relationship: string;
+}
 
 export default function DashboardPage() {
   const { user, userRole } = useAuth();
@@ -27,6 +39,7 @@ export default function DashboardPage() {
     checklistCompleted: 0,
     checklistTotal: 0,
   });
+  const [executorPlans, setExecutorPlans] = useState<PlannerProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasOnboarded, setHasOnboarded] = useState(false);
   
@@ -78,6 +91,58 @@ export default function DashboardPage() {
 
         const checklistTotal = checklistData?.length || 0;
         const checklistCompleted = checklistData?.filter(item => item.completed).length || 0;
+
+        // If user is an executor, fetch plans they manage
+        if (userRole === 'executor' || userRole === 'planner') {
+          const { data: executorData } = await supabase
+            .from('executors')
+            .select(`
+              id,
+              name,
+              relationship,
+              planner:profiles!executors_planner_id_fkey (
+                id,
+                role
+              )
+            `)
+            .eq('email', user.email)
+            .eq('status', 'active');
+
+          if (executorData && executorData.length > 0) {
+            // Fetch stats for each planner they manage
+            const plannerProfiles = await Promise.all(
+              executorData.map(async (executor) => {
+                const plannerId = executor.planner.id;
+                
+                // Get planner's email
+                const { data: authUser } = await supabase.auth.admin.getUserById(plannerId);
+                
+                // Get counts for this planner
+                const [
+                  { count: assets },
+                  { count: documents }, 
+                  { count: wishes }
+                ] = await Promise.all([
+                  supabase.from('assets').select('*', { count: 'exact', head: true }).eq('user_id', plannerId),
+                  supabase.from('documents').select('*', { count: 'exact', head: true }).eq('user_id', plannerId),
+                  supabase.from('wishes').select('*', { count: 'exact', head: true }).eq('user_id', plannerId)
+                ]);
+
+                return {
+                  id: plannerId,
+                  email: authUser?.user?.email || 'Unknown',
+                  assets_count: assets || 0,
+                  documents_count: documents || 0,
+                  wishes_count: wishes || 0,
+                  executor_name: executor.name,
+                  relationship: executor.relationship || 'Not specified'
+                };
+              })
+            );
+            
+            setExecutorPlans(plannerProfiles);
+          }
+        }
         
         setStats({
           assets: assetsCount || 0,
@@ -95,7 +160,7 @@ export default function DashboardPage() {
     }
     
     fetchStats();
-  }, [user]);
+  }, [user, userRole]);
   
   // Determine completion percentage for profile
   const getTotalItems = () => stats.assets + stats.documents + stats.wishes + stats.executors;
@@ -117,10 +182,115 @@ export default function DashboardPage() {
           Last updated: {new Date().toLocaleDateString()}
         </div>
       </div>
-      
-      {/* Onboarding prompt */}
+
+      {/* Role Selection Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* My Plan Card */}
+        <Card className="border-calm-300 bg-gradient-to-r from-calm-100 to-white hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/my-plan')}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Crown className="h-6 w-6 text-calm-600" />
+              My Plan
+            </CardTitle>
+            <CardDescription>
+              Manage your own end-of-life planning documents and preferences
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-calm-600">{stats.assets}</div>
+                <div className="text-gray-600">Assets</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-calm-600">{stats.documents}</div>
+                <div className="text-gray-600">Documents</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-calm-600">{stats.wishes}</div>
+                <div className="text-gray-600">Wishes</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-calm-600">{stats.executors}</div>
+                <div className="text-gray-600">Executors</div>
+              </div>
+            </div>
+            {hasOnboarded && (
+              <div className="mt-4">
+                <div className="flex items-center justify-between text-sm mb-2">
+                  <span>Planning Progress</span>
+                  <span>{Math.min(100, getTotalItems() * 5)}%</span>
+                </div>
+                <div className="h-2 bg-calm-200 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-calm-500 rounded-full transition-all duration-300"
+                    style={{ width: `${Math.min(100, getTotalItems() * 5)}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </CardContent>
+          <CardFooter>
+            <Button variant="calm" className="w-full">
+              {hasOnboarded ? 'Continue Planning' : 'Start Planning'}
+              <ChevronRight className="h-4 w-4 ml-2" />
+            </Button>
+          </CardFooter>
+        </Card>
+
+        {/* Plans I Manage Card */}
+        <Card className="border-blue-300 bg-gradient-to-r from-blue-100 to-white hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/executor-dashboard')}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <UserCheck className="h-6 w-6 text-blue-600" />
+              Plans I Manage
+            </CardTitle>
+            <CardDescription>
+              Access and manage estate plans where you serve as an executor
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {executorPlans.length > 0 ? (
+              <div className="space-y-3">
+                {executorPlans.slice(0, 2).map((plan) => (
+                  <div key={plan.id} className="p-3 bg-blue-50 rounded-lg">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-medium text-blue-900">{plan.email.split('@')[0]}</p>
+                        <p className="text-sm text-blue-700">{plan.relationship}</p>
+                      </div>
+                      <div className="text-right text-sm text-blue-600">
+                        <div>{plan.assets_count + plan.documents_count + plan.wishes_count} items</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {executorPlans.length > 2 && (
+                  <p className="text-sm text-blue-600 text-center">
+                    +{executorPlans.length - 2} more plans
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <UserCheck className="h-12 w-12 text-blue-400 mx-auto mb-3" />
+                <p className="text-blue-600 font-medium">No executor roles yet</p>
+                <p className="text-sm text-blue-500">You'll see plans here when someone designates you as their executor</p>
+              </div>
+            )}
+          </CardContent>
+          <CardFooter>
+            <Button variant="outline" className="w-full border-blue-300 text-blue-600 hover:bg-blue-50">
+              {executorPlans.length > 0 ? 'Manage Plans' : 'Learn About Executor Role'}
+              <ChevronRight className="h-4 w-4 ml-2" />
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+
+      {/* Onboarding prompt for new users */}
       {!hasOnboarded && (
-        <Card className="border-calm-300 bg-gradient-to-r from-calm-100 to-white">
+        <Card className="border-amber-300 bg-gradient-to-r from-amber-100 to-white">
           <CardHeader>
             <CardTitle className="text-xl">Welcome to Rest Easy!</CardTitle>
             <CardDescription>
@@ -138,149 +308,6 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {/* Welcome Card */}
-      {hasOnboarded && (
-        <Card className="border-calm-300 bg-gradient-to-r from-calm-100 to-white">
-          <CardHeader>
-            <CardTitle className="text-xl">Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}!</CardTitle>
-            <CardDescription>
-              Your end-of-life planning is {getCompletionStatus()}. 
-              {getTotalItems() === 0 ? ' Start working through your checklist to secure your legacy.' : ''}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center space-x-2">
-              <div className="h-2 flex-1 bg-calm-200 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-calm-500 rounded-full"
-                  style={{ 
-                    width: `${Math.min(100, getTotalItems() * 5)}%`,
-                    transition: 'width 1s ease-in-out'
-                  }}
-                ></div>
-              </div>
-              <span className="text-sm font-medium text-muted-foreground">
-                {Math.min(100, getTotalItems() * 5)}%
-              </span>
-            </div>
-          </CardContent>
-          {getTotalItems() === 0 && (
-            <CardFooter>
-              <Button 
-                variant="calm" 
-                className="mt-2"
-                onClick={() => navigate('/checklist')}
-              >
-                View my checklist
-              </Button>
-            </CardFooter>
-          )}
-        </Card>
-      )}
-      
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        {hasOnboarded && (
-          <Link to="/checklist\" className="block">
-            <Card className="hover:shadow-md transition-shadow">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg flex items-center">
-                    <CheckSquare className="h-5 w-5 mr-2 text-calm-500" />
-                    Checklist
-                  </CardTitle>
-                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold">{loading ? '...' : `${stats.checklistCompleted}/${stats.checklistTotal}`}</p>
-                <p className="text-sm text-muted-foreground">Tasks completed</p>
-                {stats.checklistTotal > 0 && (
-                  <div className="mt-2 h-1 bg-gray-200 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-calm-500 transition-all duration-300"
-                      style={{ width: `${checklistProgress}%` }}
-                    />
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </Link>
-        )}
-
-        <Link to="/assets" className="block">
-          <Card className="hover:shadow-md transition-shadow">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg flex items-center">
-                  <FolderClosed className="h-5 w-5 mr-2 text-calm-500" />
-                  Assets
-                </CardTitle>
-                <ChevronRight className="h-5 w-5 text-muted-foreground" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">{loading ? '...' : stats.assets}</p>
-              <p className="text-sm text-muted-foreground">Financial, physical, and digital</p>
-            </CardContent>
-          </Card>
-        </Link>
-        
-        <Link to="/documents" className="block">
-          <Card className="hover:shadow-md transition-shadow">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg flex items-center">
-                  <FileText className="h-5 w-5 mr-2 text-calm-500" />
-                  Documents
-                </CardTitle>
-                <ChevronRight className="h-5 w-5 text-muted-foreground" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">{loading ? '...' : stats.documents}</p>
-              <p className="text-sm text-muted-foreground">Wills, policies, and certificates</p>
-            </CardContent>
-          </Card>
-        </Link>
-        
-        <Link to="/wishes" className="block">
-          <Card className="hover:shadow-md transition-shadow">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg flex items-center">
-                  <HeartHandshake className="h-5 w-5 mr-2 text-calm-500" />
-                  Wishes
-                </CardTitle>
-                <ChevronRight className="h-5 w-5 text-muted-foreground" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">{loading ? '...' : stats.wishes}</p>
-              <p className="text-sm text-muted-foreground">Medical, funeral, and personal</p>
-            </CardContent>
-          </Card>
-        </Link>
-        
-        <Link to="/executors" className="block">
-          <Card className="hover:shadow-md transition-shadow">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg flex items-center">
-                  <Users className="h-5 w-5 mr-2 text-calm-500" />
-                  Executors
-                </CardTitle>
-                <ChevronRight className="h-5 w-5 text-muted-foreground" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">{loading ? '...' : stats.executors}</p>
-              <p className="text-sm text-muted-foreground">Trusted individuals</p>
-            </CardContent>
-          </Card>
-        </Link>
-      </div>
-      
       {/* Security and Trust */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="md:col-span-2">
@@ -321,51 +348,39 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle className="flex items-center">
               <AlertCircle className="h-5 w-5 mr-2 text-warning-500" />
-              Action Needed
+              Quick Actions
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {stats.executors === 0 && (
-              <div className="p-3 bg-warning-100 rounded-md">
-                <h3 className="font-medium">No executors assigned</h3>
-                <p className="text-sm text-muted-foreground mb-2">Designate someone you trust to access your information when needed.</p>
-                <Button 
-                  variant="secondary" 
-                  size="sm" 
-                  className="w-full"
-                  onClick={() => navigate('/executors')}
-                >
-                  Add executor
-                </Button>
-              </div>
-            )}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full justify-start"
+              onClick={() => navigate('/assets')}
+            >
+              <FolderClosed className="h-4 w-4 mr-2" />
+              Add Assets
+            </Button>
             
-            {stats.documents === 0 && (
-              <div className="p-3 bg-warning-100 rounded-md">
-                <h3 className="font-medium">No documents uploaded</h3>
-                <p className="text-sm text-muted-foreground mb-2">Upload important documents like your will or insurance policies.</p>
-                <Button 
-                  variant="secondary" 
-                  size="sm" 
-                  className="w-full"
-                  onClick={() => navigate('/documents')}
-                >
-                  Upload documents
-                </Button>
-              </div>
-            )}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full justify-start"
+              onClick={() => navigate('/documents')}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Upload Documents
+            </Button>
             
-            {stats.executors > 0 && stats.documents > 0 && (
-              <div className="p-3 bg-success-100 rounded-md">
-                <h3 className="font-medium flex items-center">
-                  <CheckCircle2 className="h-4 w-4 mr-1 text-success-500" />
-                  Great progress!
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  You've completed the essential steps. Continue adding more details to ensure your wishes are clear.
-                </p>
-              </div>
-            )}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full justify-start"
+              onClick={() => navigate('/executors')}
+            >
+              <Users className="h-4 w-4 mr-2" />
+              Invite Executor
+            </Button>
           </CardContent>
         </Card>
       </div>
