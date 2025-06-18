@@ -19,7 +19,13 @@ import {
   Shield,
   Edit,
   X,
-  AlertTriangle
+  AlertTriangle,
+  Building,
+  User,
+  Phone,
+  CreditCard,
+  Heart,
+  Briefcase
 } from 'lucide-react';
 import DeathCertificateUpload from './DeathCertificateUpload';
 import { toast } from '../ui/toast';
@@ -61,15 +67,16 @@ interface Will {
   content: string;
 }
 
-interface EmailDraft {
+interface ContactRepresentative {
   id: string;
-  contact_email: string;
-  contact_name: string;
-  contact_organization: string;
-  subject: string;
-  content: string;
+  name: string;
+  organization: string;
+  email: string;
+  phone: string;
+  type: string;
   documents: Document[];
-  sent: boolean;
+  assets: Asset[];
+  status: 'not_contacted' | 'sent';
 }
 
 export default function ExecutorWorkflow() {
@@ -80,12 +87,12 @@ export default function ExecutorWorkflow() {
   const [will, setWill] = useState<Will | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
-  const [emailDrafts, setEmailDrafts] = useState<EmailDraft[]>([]);
+  const [contactRepresentatives, setContactRepresentatives] = useState<ContactRepresentative[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [editEmailModalOpen, setEditEmailModalOpen] = useState(false);
-  const [selectedEmailDraft, setSelectedEmailDraft] = useState<EmailDraft | null>(null);
+  const [selectedContact, setSelectedContact] = useState<ContactRepresentative | null>(null);
   const [editingEmail, setEditingEmail] = useState({ subject: '', content: '' });
 
   const steps: WorkflowStep[] = [
@@ -250,7 +257,7 @@ export default function ExecutorWorkflow() {
 
       if (documentsData) {
         setDocuments(documentsData);
-        generateEmailDrafts(documentsData);
+        generateContactRepresentatives(documentsData, assetsData || []);
       }
 
     } catch (error) {
@@ -258,75 +265,95 @@ export default function ExecutorWorkflow() {
     }
   };
 
-  const generateEmailDrafts = (docs: Document[]) => {
-    // Group documents by contact email
-    const contactGroups = docs.reduce((groups, doc) => {
-      if (!doc.contact_email) return groups;
-      
-      const key = doc.contact_email;
-      if (!groups[key]) {
-        groups[key] = {
-          contact: {
-            email: doc.contact_email,
-            name: doc.contact_name,
-            organization: doc.contact_organization
-          },
-          documents: []
-        };
-      }
-      groups[key].documents.push(doc);
-      return groups;
-    }, {} as Record<string, { contact: any; documents: Document[] }>);
+  const generateContactRepresentatives = (docs: Document[], assetsList: Asset[]) => {
+    const contactMap = new Map<string, ContactRepresentative>();
 
-    // Generate email drafts for each contact
-    const drafts = Object.values(contactGroups).map((group, index) => {
-      const { contact, documents } = group;
-      const documentTypes = [...new Set(documents.map(d => d.category))];
+    // Process documents - group by email AND type
+    docs.forEach(doc => {
+      if (!doc.contact_email) return;
       
-      return {
-        id: `draft-${index}`,
-        contact_email: contact.email,
-        contact_name: contact.name || 'Representative',
-        contact_organization: contact.organization || '',
-        subject: `Notification of Passing - ${documents[0].name}${documents.length > 1 ? ` and ${documents.length - 1} other document${documents.length > 2 ? 's' : ''}` : ''}`,
-        content: generateEmailContent(contact, documents, documentTypes),
-        documents,
-        sent: false
-      };
+      const type = getContactType(doc.category, doc.contact_organization);
+      const key = `${doc.contact_email}-${type}`;
+      
+      if (!contactMap.has(key)) {
+        contactMap.set(key, {
+          id: key,
+          name: doc.contact_name || 'Unknown Contact',
+          organization: doc.contact_organization || '',
+          email: doc.contact_email,
+          phone: doc.contact_phone || '',
+          type: type,
+          documents: [],
+          assets: [],
+          status: 'not_contacted'
+        });
+      }
+      
+      contactMap.get(key)!.documents.push(doc);
     });
 
-    setEmailDrafts(drafts);
+    // Process assets - group by email AND type
+    assetsList.forEach(asset => {
+      if (!asset.contact_email) return;
+      
+      const type = getContactType(asset.type, asset.contact_organization);
+      const key = `${asset.contact_email}-${type}`;
+      
+      if (!contactMap.has(key)) {
+        contactMap.set(key, {
+          id: key,
+          name: asset.contact_name || 'Unknown Contact',
+          organization: asset.contact_organization || '',
+          email: asset.contact_email,
+          phone: asset.contact_phone || '',
+          type: type,
+          documents: [],
+          assets: [],
+          status: 'not_contacted'
+        });
+      }
+      
+      contactMap.get(key)!.assets.push(asset);
+    });
+
+    setContactRepresentatives(Array.from(contactMap.values()));
   };
 
-  const generateEmailContent = (contact: any, documents: Document[], documentTypes: string[]) => {
-    const contactName = contact.name || 'Representative';
-    const organization = contact.organization ? ` at ${contact.organization}` : '';
-    
-    let content = `Dear ${contactName},\n\n`;
-    content += `I am writing to inform you of the passing of ${plannerName}, who held `;
-    
-    if (documents.length === 1) {
-      content += `${documents[0].category} documentation with your organization`;
-    } else {
-      content += `multiple accounts and documents with your organization`;
+  const getContactType = (category: string, organization?: string) => {
+    if (organization) {
+      const orgLower = organization.toLowerCase();
+      if (orgLower.includes('bank') || orgLower.includes('credit union')) return 'Bank';
+      if (orgLower.includes('insurance')) return 'Insurance';
+      if (orgLower.includes('investment') || orgLower.includes('brokerage')) return 'Investment';
+      if (orgLower.includes('law') || orgLower.includes('attorney')) return 'Legal';
     }
     
-    content += `.\n\nAs the designated executor of their estate, I need to notify you of this passing and request information about the following:\n\n`;
-    
-    documents.forEach((doc, index) => {
-      content += `${index + 1}. ${doc.name}`;
-      if (doc.description) {
-        content += ` - ${doc.description}`;
-      }
-      content += '\n';
-    });
-    
-    content += `\nPlease let me know what documentation you require to proceed with the necessary account closures, transfers, or other required actions. I can provide a certified copy of the death certificate and any other documentation you may need.\n\n`;
-    content += `I would appreciate your guidance on the next steps and any forms that need to be completed.\n\n`;
-    content += `Thank you for your assistance during this difficult time.\n\n`;
-    content += `Sincerely,\n[Your Name]\nExecutor of the Estate`;
-    
-    return content;
+    switch (category) {
+      case 'financial': return 'Financial';
+      case 'legal': return 'Legal';
+      case 'health': return 'Medical';
+      case 'personal': return 'Personal';
+      default: return 'Other';
+    }
+  };
+
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'Bank':
+        return <Building className="h-3 w-3" />;
+      case 'Insurance':
+        return <Shield className="h-3 w-3" />;
+      case 'Investment':
+        return <CreditCard className="h-3 w-3" />;
+      case 'Legal':
+        return <Scale className="h-3 w-3" />;
+      case 'Medical':
+        return <Heart className="h-3 w-3" />;
+      case 'Financial':
+        return <Briefcase className="h-3 w-3" />;
+      default:
+        return <User className="h-3 w-3" />;
+    }
   };
 
   const handleVerificationComplete = () => {
@@ -386,28 +413,77 @@ export default function ExecutorWorkflow() {
     setPreviewModalOpen(true);
   };
 
-  const editEmail = (draft: EmailDraft) => {
-    setSelectedEmailDraft(draft);
-    setEditingEmail({
-      subject: draft.subject,
-      content: draft.content
-    });
+  const editEmail = (contact: ContactRepresentative) => {
+    setSelectedContact(contact);
+    const subject = generateEmailSubject(contact);
+    const content = generateEmailContent(contact);
+    setEditingEmail({ subject, content });
     setEditEmailModalOpen(true);
   };
 
-  const saveEmailChanges = () => {
-    if (!selectedEmailDraft) return;
+  const generateEmailSubject = (contact: ContactRepresentative) => {
+    const itemCount = contact.documents.length + contact.assets.length;
+    const firstItem = contact.documents[0]?.name || contact.assets[0]?.name || 'Account';
+    
+    if (itemCount === 1) {
+      return `Notification of Passing - ${firstItem} (${contact.type})`;
+    } else {
+      return `Notification of Passing - ${contact.type} Accounts (${itemCount} items)`;
+    }
+  };
 
-    setEmailDrafts(prev => 
-      prev.map(d => 
-        d.id === selectedEmailDraft.id 
-          ? { ...d, subject: editingEmail.subject, content: editingEmail.content }
-          : d
-      )
-    );
+  const generateEmailContent = (contact: ContactRepresentative) => {
+    const contactName = contact.name || 'Representative';
+    const organization = contact.organization ? ` at ${contact.organization}` : '';
+    
+    let content = `Dear ${contactName},\n\n`;
+    content += `I am writing to inform you of the passing of ${plannerName}, who held `;
+    
+    const totalItems = contact.documents.length + contact.assets.length;
+    if (totalItems === 1) {
+      const item = contact.documents[0] || contact.assets[0];
+      content += `${item.name} with your organization`;
+    } else {
+      content += `${contact.type.toLowerCase()} accounts and documents with your organization`;
+    }
+    
+    content += `.\n\nAs the designated executor of their estate, I need to notify you of this passing and request information about the following ${contact.type.toLowerCase()} matters:\n\n`;
+    
+    let itemIndex = 1;
+    
+    // List documents
+    contact.documents.forEach((doc) => {
+      content += `${itemIndex}. ${doc.name}`;
+      if (doc.description) {
+        content += ` - ${doc.description}`;
+      }
+      content += ` (Document)\n`;
+      itemIndex++;
+    });
+    
+    // List assets
+    contact.assets.forEach((asset) => {
+      content += `${itemIndex}. ${asset.name}`;
+      if (asset.description) {
+        content += ` - ${asset.description}`;
+      }
+      content += ` (${asset.type} asset)\n`;
+      itemIndex++;
+    });
+    
+    content += `\nPlease let me know what documentation you require to proceed with the necessary account closures, transfers, or other required actions related to these ${contact.type.toLowerCase()} matters. I can provide a certified copy of the death certificate and any other documentation you may need.\n\n`;
+    content += `I would appreciate your guidance on the next steps and any forms that need to be completed for these ${contact.type.toLowerCase()} accounts.\n\n`;
+    content += `Thank you for your assistance during this difficult time.\n\n`;
+    content += `Sincerely,\n[Your Name]\nExecutor of the Estate`;
+    
+    return content;
+  };
+
+  const saveEmailChanges = () => {
+    if (!selectedContact) return;
 
     setEditEmailModalOpen(false);
-    setSelectedEmailDraft(null);
+    setSelectedContact(null);
 
     toast({
       title: "Success",
@@ -415,10 +491,7 @@ export default function ExecutorWorkflow() {
     });
   };
 
-  const sendEmail = async (draftId: string) => {
-    const draft = emailDrafts.find(d => d.id === draftId);
-    if (!draft) return;
-
+  const sendEmail = async (contact: ContactRepresentative) => {
     // Check if Supabase is properly configured
     if (!isSupabaseConfigured()) {
       toast({
@@ -430,7 +503,10 @@ export default function ExecutorWorkflow() {
     }
 
     try {
-      // Use the generic send-email function instead of send-executor-invitation
+      const subject = generateEmailSubject(contact);
+      const content = generateEmailContent(contact);
+
+      // Use the generic send-email function
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
         method: 'POST',
         headers: {
@@ -438,9 +514,9 @@ export default function ExecutorWorkflow() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          to: draft.contact_email,
-          subject: draft.subject,
-          text: draft.content
+          to: contact.email,
+          subject: subject,
+          text: content
         }),
       });
 
@@ -456,15 +532,15 @@ export default function ExecutorWorkflow() {
       }
 
       // Mark as sent
-      setEmailDrafts(prev => 
-        prev.map(d => 
-          d.id === draftId ? { ...d, sent: true } : d
+      setContactRepresentatives(prev => 
+        prev.map(c => 
+          c.id === contact.id ? { ...c, status: 'sent' } : c
         )
       );
 
       toast({
         title: "Email Sent ✅",
-        description: `Notification sent to ${draft.contact_name} at ${draft.contact_email}`,
+        description: `${contact.type} notification sent to ${contact.name} at ${contact.email}`,
       });
 
     } catch (error) {
@@ -677,74 +753,126 @@ export default function ExecutorWorkflow() {
           {currentStep === 4 && (
             <div className="space-y-6">
               <div className="text-sm text-gray-600 mb-4">
-                Review and send notification emails to document representatives. 
-                Each email includes all relevant documents for that contact.
+                Contact all representatives and organizations that need to be notified of the passing. Each responsibility type will receive a separate, focused notification.
               </div>
               
-              {emailDrafts.map((draft) => (
-                <Card key={draft.id} className={draft.sent ? 'bg-green-50 border-green-200' : ''}>
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="text-lg">{draft.contact_name}</CardTitle>
-                        <p className="text-sm text-gray-500">{draft.contact_organization}</p>
-                        <p className="text-sm text-gray-500">{draft.contact_email}</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => editEmail(draft)}
-                          disabled={draft.sent}
-                        >
-                          <Edit className="h-4 w-4 mr-1" />
-                          Edit
-                        </Button>
-                        {!draft.sent ? (
-                          <Button 
-                            size="sm" 
-                            onClick={() => sendEmail(draft.id)}
-                            disabled={!isSupabaseConfigured()}
-                          >
-                            <Send className="h-4 w-4 mr-1" />
-                            Send
-                          </Button>
-                        ) : (
-                          <span className="text-sm text-green-600 font-medium">Sent ✓</span>
-                        )}
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div>
-                        <p className="text-sm font-medium">Subject:</p>
-                        <p className="text-sm text-gray-600">{draft.subject}</p>
-                      </div>
-                      
-                      <div>
-                        <p className="text-sm font-medium">Documents ({draft.documents.length}):</p>
-                        <ul className="text-sm text-gray-600 list-disc list-inside">
-                          {draft.documents.map((doc, index) => (
-                            <li key={index}>{doc.name} ({doc.category})</li>
-                          ))}
-                        </ul>
-                      </div>
-                      
-                      <div>
-                        <p className="text-sm font-medium">Message Preview:</p>
-                        <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded max-h-32 overflow-y-auto">
-                          <pre className="whitespace-pre-wrap font-sans">
-                            {draft.content.substring(0, 300)}...
-                          </pre>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+              {contactRepresentatives.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse border border-gray-200 rounded-lg">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="border border-gray-200 px-4 py-3 text-left font-medium text-gray-900">Name</th>
+                        <th className="border border-gray-200 px-4 py-3 text-left font-medium text-gray-900">Type</th>
+                        <th className="border border-gray-200 px-4 py-3 text-left font-medium text-gray-900">Contact</th>
+                        <th className="border border-gray-200 px-4 py-3 text-left font-medium text-gray-900">Items</th>
+                        <th className="border border-gray-200 px-4 py-3 text-left font-medium text-gray-900">Action</th>
+                        <th className="border border-gray-200 px-4 py-3 text-left font-medium text-gray-900">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {contactRepresentatives.map((contact) => (
+                        <tr key={contact.id} className="hover:bg-gray-50">
+                          <td className="border border-gray-200 px-4 py-3">
+                            <div>
+                              <div className="font-medium text-gray-900">{contact.name}</div>
+                              {contact.organization && (
+                                <div className="text-sm text-gray-500">{contact.organization}</div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="border border-gray-200 px-4 py-3">
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              {getTypeIcon(contact.type)}
+                              {contact.type}
+                            </span>
+                          </td>
+                          <td className="border border-gray-200 px-4 py-3">
+                            <div className="text-sm">
+                              <div className="flex items-center gap-1 text-gray-900">
+                                <Mail className="h-3 w-3" />
+                                {contact.email}
+                              </div>
+                              {contact.phone && (
+                                <div className="flex items-center gap-1 text-gray-500 mt-1">
+                                  <Phone className="h-3 w-3" />
+                                  {contact.phone}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="border border-gray-200 px-4 py-3">
+                            <div className="text-sm">
+                              <div className="font-medium text-gray-900">
+                                {contact.documents.length + contact.assets.length} item{contact.documents.length + contact.assets.length !== 1 ? 's' : ''}
+                              </div>
+                              <div className="text-gray-500">
+                                {contact.documents.length > 0 && `${contact.documents.length} doc${contact.documents.length !== 1 ? 's' : ''}`}
+                                {contact.documents.length > 0 && contact.assets.length > 0 && ', '}
+                                {contact.assets.length > 0 && `${contact.assets.length} asset${contact.assets.length !== 1 ? 's' : ''}`}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="border border-gray-200 px-4 py-3">
+                            <div className="flex gap-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => editEmail(contact)}
+                                disabled={contact.status === 'sent'}
+                              >
+                                <Edit className="h-4 w-4 mr-1" />
+                                Preview
+                              </Button>
+                              {contact.status === 'not_contacted' ? (
+                                <Button 
+                                  size="sm" 
+                                  onClick={() => sendEmail(contact)}
+                                  disabled={!isSupabaseConfigured()}
+                                >
+                                  <Send className="h-4 w-4 mr-1" />
+                                  Contact
+                                </Button>
+                              ) : (
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  disabled
+                                >
+                                  <CheckCircle2 className="h-4 w-4 mr-1" />
+                                  Sent
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                          <td className="border border-gray-200 px-4 py-3">
+                            {contact.status === 'sent' ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                <CheckCircle2 className="h-3 w-3" />
+                                Sent
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                <Mail className="h-3 w-3" />
+                                Not Contacted
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Mail className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Contact Information</h3>
+                  <p className="text-gray-500">
+                    No contact information found for documents or assets. Please ensure contact details are added to documents and assets.
+                  </p>
+                </div>
+              )}
               
-              {emailDrafts.every(d => d.sent) && (
+              {contactRepresentatives.every(c => c.status === 'sent') && contactRepresentatives.length > 0 && (
                 <Button onClick={() => markStepCompleted(4)}>
                   <CheckCircle2 className="h-4 w-4 mr-2" />
                   Complete Workflow
@@ -810,18 +938,22 @@ export default function ExecutorWorkflow() {
         </DialogContent>
       </Dialog>
 
-      {/* Email Edit Modal */}
+      {/* Email Preview Modal */}
       <Dialog open={editEmailModalOpen} onOpenChange={setEditEmailModalOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Edit className="h-5 w-5" />
-              Edit Email to {selectedEmailDraft?.contact_name}
+              <Mail className="h-5 w-5" />
+              {selectedContact?.type} Email Preview - {selectedContact?.name}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Subject</label>
+              <label className="block text-sm font-medium mb-1">To:</label>
+              <div className="text-sm text-gray-600">{selectedContact?.email}</div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Subject:</label>
               <Input
                 value={editingEmail.subject}
                 onChange={(e) => setEditingEmail(prev => ({ ...prev, subject: e.target.value }))}
@@ -829,7 +961,7 @@ export default function ExecutorWorkflow() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Message</label>
+              <label className="block text-sm font-medium mb-1">Message:</label>
               <textarea
                 className="w-full rounded-md border border-input bg-background px-3 py-2 min-h-[400px] font-mono text-sm"
                 value={editingEmail.content}
@@ -837,10 +969,24 @@ export default function ExecutorWorkflow() {
                 placeholder="Email content"
               />
             </div>
+            
+            {selectedContact && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-medium text-blue-900 mb-2">{selectedContact.type} items to be mentioned:</h4>
+                <div className="space-y-2 text-sm text-blue-800">
+                  {selectedContact.documents.map((doc, index) => (
+                    <div key={index}>• {doc.name} (Document - {doc.category})</div>
+                  ))}
+                  {selectedContact.assets.map((asset, index) => (
+                    <div key={index}>• {asset.name} (Asset - {asset.type})</div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditEmailModalOpen(false)}>
-              Cancel
+              Close
             </Button>
             <Button onClick={saveEmailChanges}>
               Save Changes
