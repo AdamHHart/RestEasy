@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
@@ -17,7 +17,8 @@ import {
   Users,
   ChevronRight,
   UserCheck,
-  Workflow
+  Workflow,
+  AlertTriangle
 } from 'lucide-react';
 import ExecutorWorkflow from '../components/executor/ExecutorWorkflow';
 
@@ -53,6 +54,13 @@ export default function ExecutorDashboard() {
       setLoading(true);
       
       console.log('Fetching executor plans for user:', user.email);
+      
+      // Check if Supabase is configured
+      if (!isSupabaseConfigured()) {
+        console.warn('Supabase not configured, cannot fetch executor plans');
+        setLoading(false);
+        return;
+      }
       
       // Get all executor roles for this user
       const { data: executorData, error } = await supabase
@@ -148,6 +156,23 @@ export default function ExecutorDashboard() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
+      {/* Configuration Warning */}
+      {!isSupabaseConfigured() && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              <div>
+                <h3 className="font-medium text-red-800">Supabase Configuration Required</h3>
+                <p className="text-sm text-red-700 mt-1">
+                  Please configure your Supabase environment variables in the .env file to access executor plans.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex items-center gap-4">
         <Button variant="ghost" onClick={() => navigate('/dashboard')}>
           <ArrowLeft className="h-4 w-4 mr-2" />
@@ -184,6 +209,7 @@ export default function ExecutorDashboard() {
                 <li>• Try refreshing the page</li>
                 <li>• Check that you used the same email address</li>
                 <li>• Contact the person who invited you</li>
+                <li>• Ensure Supabase is properly configured</li>
               </ul>
             </div>
           </CardContent>

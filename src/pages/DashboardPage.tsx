@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { 
@@ -15,7 +15,8 @@ import {
   CheckCircle2,
   CheckSquare,
   UserCheck,
-  Crown
+  Crown,
+  AlertTriangle
 } from 'lucide-react';
 
 interface PlannerProfile {
@@ -50,6 +51,21 @@ export default function DashboardPage() {
       setLoading(true);
       
       try {
+        // Check if Supabase is configured
+        if (!isSupabaseConfigured()) {
+          console.warn('Supabase not configured, using mock data');
+          setStats({
+            assets: 0,
+            documents: 0,
+            wishes: 0,
+            executors: 0,
+            checklistCompleted: 0,
+            checklistTotal: 0,
+          });
+          setLoading(false);
+          return;
+        }
+
         // Check if user has completed onboarding
         const { data: onboardingData } = await supabase
           .from('onboarding_responses')
@@ -148,6 +164,15 @@ export default function DashboardPage() {
         });
       } catch (error) {
         console.error('Error fetching stats:', error);
+        // Set default values on error
+        setStats({
+          assets: 0,
+          documents: 0,
+          wishes: 0,
+          executors: 0,
+          checklistCompleted: 0,
+          checklistTotal: 0,
+        });
       } finally {
         setLoading(false);
       }
@@ -170,6 +195,30 @@ export default function DashboardPage() {
   
   return (
     <div className="space-y-6">
+      {/* Configuration Warning */}
+      {!isSupabaseConfigured() && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              <div>
+                <h3 className="font-medium text-red-800">Supabase Configuration Required</h3>
+                <p className="text-sm text-red-700 mt-1">
+                  Please configure your Supabase environment variables in the .env file:
+                </p>
+                <ul className="text-sm text-red-700 mt-2 list-disc list-inside">
+                  <li>Set VITE_SUPABASE_URL to your Supabase project URL</li>
+                  <li>Set VITE_SUPABASE_ANON_KEY to your Supabase anonymous key</li>
+                </ul>
+                <p className="text-sm text-red-700 mt-2">
+                  You can find these values in your Supabase project dashboard under Settings → API.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
         <div className="text-sm text-muted-foreground">

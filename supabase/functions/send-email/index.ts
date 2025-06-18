@@ -1,4 +1,5 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// Setup type definitions for built-in Supabase Runtime APIs
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,11 +10,13 @@ const corsHeaders = {
 interface EmailRequest {
   to: string;
   subject: string;
-  html: string;
+  html?: string;
   text?: string;
 }
 
-serve(async (req: Request) => {
+console.info('send-email function started');
+
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 200,
@@ -24,15 +27,28 @@ serve(async (req: Request) => {
   try {
     const { to, subject, html, text }: EmailRequest = await req.json();
 
+    // Validate required fields
+    if (!to || !subject) {
+      throw new Error("Missing required fields: to, subject");
+    }
+
+    // If no HTML provided but text is provided, convert text to HTML
+    const emailHtml = html || (text ? text.replace(/\n/g, '<br>') : '');
+    const emailText = text || (html ? html.replace(/<[^>]*>/g, '') : '');
+
+    if (!emailHtml && !emailText) {
+      throw new Error("Either html or text content is required");
+    }
+
     // Get email service configuration from environment
     const emailService = Deno.env.get("EMAIL_SERVICE") || "resend";
     
     let response;
     
     if (emailService === "resend") {
-      response = await sendWithResend(to, subject, html, text);
+      response = await sendWithResend(to, subject, emailHtml, emailText);
     } else if (emailService === "sendgrid") {
-      response = await sendWithSendGrid(to, subject, html, text);
+      response = await sendWithSendGrid(to, subject, emailHtml, emailText);
     } else {
       throw new Error("Unsupported email service");
     }
@@ -41,7 +57,7 @@ serve(async (req: Request) => {
       JSON.stringify({
         success: true,
         message: "Email sent successfully",
-        messageId: response.messageId
+        messageId: response.messageId || response.id
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -64,7 +80,7 @@ serve(async (req: Request) => {
 
 async function sendWithResend(to: string, subject: string, html: string, text?: string) {
   const resendApiKey = Deno.env.get("RESEND_API_KEY");
-  const fromEmail = Deno.env.get("FROM_EMAIL") || "noreply@resteasy.com";
+  const fromEmail = Deno.env.get("FROM_EMAIL") || "onboarding@resend.dev";
   
   if (!resendApiKey) {
     throw new Error("RESEND_API_KEY environment variable is required");
@@ -86,8 +102,8 @@ async function sendWithResend(to: string, subject: string, html: string, text?: 
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Resend API error: ${error}`);
+    const errorData = await response.text();
+    throw new Error(`Resend API error (${response.status}): ${errorData}`);
   }
 
   return await response.json();
@@ -114,7 +130,7 @@ async function sendWithSendGrid(to: string, subject: string, html: string, text?
           subject,
         },
       ],
-      from: { email: fromEmail, name: "Rest Easy" },
+      from: { email: fromEmail, name: "Ever Ease" },
       content: [
         {
           type: "text/html",
@@ -129,8 +145,8 @@ async function sendWithSendGrid(to: string, subject: string, html: string, text?
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`SendGrid API error: ${error}`);
+    const errorData = await response.text();
+    throw new Error(`SendGrid API error (${response.status}): ${errorData}`);
   }
 
   return { messageId: response.headers.get("x-message-id") };

@@ -12,9 +12,57 @@ A comprehensive end-of-life planning platform that helps users organize their as
 - **Email Notifications**: Automated invitations and confirmations
 - **End-to-End Encryption**: All data is securely encrypted
 
-## Email Configuration
+## Quick Setup
 
-To enable email notifications (registration confirmation, executor invitations, password reset), you need to configure an email service:
+### 1. Configure Supabase
+
+1. Create a new project at [supabase.com](https://supabase.com)
+2. Copy your project URL and anonymous key from Settings → API
+3. Create a `.env` file in the project root:
+
+```env
+# Supabase environment variables
+VITE_SUPABASE_URL=https://your-project-id.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anonymous-key
+
+# Email service configuration (optional)
+EMAIL_SERVICE=resend
+RESEND_API_KEY=your-resend-api-key
+FROM_EMAIL=noreply@yourdomain.com
+APP_URL=https://yourdomain.com
+```
+
+### 2. Set up Database
+
+Run the migration files in your Supabase SQL editor in order:
+- All files in `supabase/migrations/` directory
+
+### 3. Configure Email (Optional)
+
+For email notifications to work, you need to:
+
+1. **Choose an email service** (Resend recommended):
+   - Sign up at [resend.com](https://resend.com)
+   - Get your API key from the dashboard
+
+2. **Set environment variables in Supabase**:
+   - Go to your Supabase project dashboard
+   - Navigate to Settings → Edge Functions
+   - Add these environment variables:
+     ```
+     EMAIL_SERVICE=resend
+     RESEND_API_KEY=your-resend-api-key
+     FROM_EMAIL=noreply@yourdomain.com
+     APP_URL=https://yourdomain.com
+     ```
+
+3. **Deploy edge functions**:
+   ```bash
+   # Deploy the send-email function
+   supabase functions deploy send-email
+   ```
+
+## Email Configuration
 
 ### Option 1: Resend (Recommended)
 
@@ -43,7 +91,7 @@ To enable email notifications (registration confirmation, executor invitations, 
 ### Setting Environment Variables in Supabase
 
 1. Go to your Supabase project dashboard
-2. Navigate to Settings > Edge Functions
+2. Navigate to Settings → Edge Functions
 3. Add the environment variables listed above
 4. Deploy the edge functions
 
@@ -60,23 +108,44 @@ To enable email notifications (registration confirmation, executor invitations, 
 3. **Test with Different Providers**: Try Gmail, Outlook, etc.
 4. **Monitor Logs**: Check Supabase edge function logs for errors
 
-## Troubleshooting Email Issues
+## Troubleshooting
 
-### Emails Not Being Sent
+### "Failed to fetch" Errors
 
-1. Check environment variables are set correctly
+This usually means Supabase is not properly configured:
+
+1. **Check your .env file**:
+   - Ensure `VITE_SUPABASE_URL` is set to your actual Supabase project URL
+   - Ensure `VITE_SUPABASE_ANON_KEY` is set to your actual anonymous key
+   - These values should NOT contain placeholder text
+
+2. **Find your Supabase credentials**:
+   - Go to your Supabase project dashboard
+   - Navigate to Settings → API
+   - Copy the "Project URL" and "anon public" key
+
+3. **Restart your development server** after updating the .env file:
+   ```bash
+   npm run dev
+   ```
+
+### Email Issues
+
+#### Emails Not Being Sent
+
+1. Check environment variables are set correctly in Supabase
 2. Verify API keys are valid and have proper permissions
 3. Check edge function logs in Supabase dashboard
 4. Ensure your email service account is verified
 
-### Emails Going to Spam
+#### Emails Going to Spam
 
 1. Set up SPF, DKIM, and DMARC records for your domain
 2. Use a verified domain for the FROM_EMAIL
 3. Avoid spam trigger words in subject lines
 4. Maintain good sender reputation
 
-### Email Service Limits
+#### Email Service Limits
 
 - **Resend**: 100 emails/day on free plan
 - **SendGrid**: 100 emails/day on free plan

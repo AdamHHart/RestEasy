@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../components/ui/card';
-import { Lock, Mail, ShieldCheck, ArrowLeft, AlertCircle } from 'lucide-react';
+import { Lock, Mail, ShieldCheck, ArrowLeft, AlertCircle, Settings } from 'lucide-react';
 import { toast } from '../components/ui/toast';
 
 export default function AuthPage() {
@@ -23,8 +23,23 @@ export default function AuthPage() {
     }
   }, [user, navigate]);
 
+  // Check if Supabase is configured
+  const supabaseConfigured = isSupabaseConfigured();
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check configuration before attempting auth
+    if (!supabaseConfigured) {
+      setError('Supabase is not properly configured. Please check your environment variables and restart the development server.');
+      toast({
+        title: "Configuration Error",
+        description: "Please configure your Supabase credentials in the .env file and restart the server.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -124,6 +139,8 @@ export default function AuthPage() {
         errorMessage = 'Invalid email or password. Please check your credentials and try again.';
       } else if (error.message?.includes('Email not confirmed')) {
         errorMessage = 'Please check your email and click the confirmation link before signing in.';
+      } else if (error.message?.includes('Failed to fetch') || error.message?.includes('fetch')) {
+        errorMessage = 'Unable to connect to the server. Please check your internet connection and try again.';
       }
       
       setError(errorMessage);
@@ -136,6 +153,43 @@ export default function AuthPage() {
       setLoading(false);
     }
   };
+
+  // Show configuration warning if Supabase is not configured
+  if (!supabaseConfigured) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-calm-300 to-background flex flex-col items-center justify-center px-4">
+        <div className="w-full max-w-md">
+          <Card className="w-full shadow-lg border-none">
+            <CardHeader>
+              <div className="flex items-center gap-2 mb-2">
+                <Settings className="h-6 w-6 text-amber-500" />
+                <CardTitle className="text-amber-700">Configuration Required</CardTitle>
+              </div>
+              <CardDescription>
+                Supabase credentials need to be configured to use this application.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-amber-50 border border-amber-200 rounded-md p-4">
+                <h3 className="font-semibold text-amber-800 mb-2">Setup Instructions:</h3>
+                <ol className="text-sm text-amber-700 space-y-1 list-decimal list-inside">
+                  <li>Go to <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="underline">supabase.com/dashboard</a></li>
+                  <li>Select your project (or create one)</li>
+                  <li>Go to Settings → API</li>
+                  <li>Copy your Project URL and anon/public key</li>
+                  <li>Update your .env file with the actual values</li>
+                  <li>Restart your development server</li>
+                </ol>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                <p>Check the browser console for detailed configuration instructions.</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-calm-300 to-background flex flex-col items-center justify-center px-4">

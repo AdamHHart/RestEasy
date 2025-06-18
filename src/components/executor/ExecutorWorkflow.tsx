@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -18,7 +18,8 @@ import {
   Download,
   Shield,
   Edit,
-  X
+  X,
+  AlertTriangle
 } from 'lucide-react';
 import DeathCertificateUpload from './DeathCertificateUpload';
 import { toast } from '../ui/toast';
@@ -154,13 +155,13 @@ export default function ExecutorWorkflow() {
 
       // Get planner's name using edge function
       try {
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-        if (!supabaseUrl || !supabaseKey) {
-          console.error('Missing Supabase environment variables');
+        if (!isSupabaseConfigured()) {
+          console.warn('Supabase not properly configured, using fallback planner name');
           setPlannerName(`Planner ${executorData.planner_id.slice(0, 8)}`);
         } else {
+          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+          const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
           const response = await fetch(`${supabaseUrl}/functions/v1/get-planner-info`, {
             method: 'POST',
             headers: {
@@ -418,40 +419,27 @@ export default function ExecutorWorkflow() {
     const draft = emailDrafts.find(d => d.id === draftId);
     if (!draft) return;
 
-    // Validate environment variables
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-    if (!supabaseUrl) {
+    // Check if Supabase is properly configured
+    if (!isSupabaseConfigured()) {
       toast({
         title: "Configuration Error",
-        description: "Supabase URL is not configured. Please check your environment variables.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!supabaseKey) {
-      toast({
-        title: "Configuration Error",
-        description: "Supabase API key is not configured. Please check your environment variables.",
+        description: "Supabase is not properly configured. Please check your environment variables in the .env file.",
         variant: "destructive"
       });
       return;
     }
 
     try {
-      // Send email through edge function with proper error handling
-      const response = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+      // Use the generic send-email function instead of send-executor-invitation
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${supabaseKey}`,
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           to: draft.contact_email,
           subject: draft.subject,
-          html: `<pre style="font-family: Arial, sans-serif; white-space: pre-wrap;">${draft.content}</pre>`,
           text: draft.content
         }),
       });
@@ -485,7 +473,7 @@ export default function ExecutorWorkflow() {
       let errorMessage = 'Unknown error occurred';
       
       if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-        errorMessage = 'Unable to connect to email service. Please check your internet connection and Supabase configuration.';
+        errorMessage = 'Unable to connect to email service. Please verify your Supabase configuration and ensure the send-email Edge Function is deployed.';
       } else if (error instanceof Error) {
         errorMessage = error.message;
       }
@@ -510,6 +498,23 @@ export default function ExecutorWorkflow() {
 
   return (
     <div className="space-y-6">
+      {/* Configuration Warning */}
+      {!isSupabaseConfigured() && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="h-5 w-5 text-amber-600" />
+              <div>
+                <h3 className="font-medium text-amber-800">Configuration Required</h3>
+                <p className="text-sm text-amber-700">
+                  Supabase environment variables are not properly configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Executor Workflow</CardTitle>
@@ -696,7 +701,11 @@ export default function ExecutorWorkflow() {
                           Edit
                         </Button>
                         {!draft.sent ? (
-                          <Button size="sm" onClick={() => sendEmail(draft.id)}>
+                          <Button 
+                            size="sm" 
+                            onClick={() => sendEmail(draft.id)}
+                            disabled={!isSupabaseConfigured()}
+                          >
                             <Send className="h-4 w-4 mr-1" />
                             Send
                           </Button>

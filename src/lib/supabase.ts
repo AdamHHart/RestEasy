@@ -1,11 +1,51 @@
 import { createClient } from '@supabase/supabase-js';
 
-// These would normally come from environment variables
-// For this demo, we're using placeholder values
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://your-supabase-url.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key';
+// Get environment variables with validation
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Check if environment variables are properly configured
+const isConfigured = supabaseUrl && 
+                    supabaseAnonKey && 
+                    supabaseUrl !== 'https://your-supabase-url.supabase.co' && 
+                    supabaseUrl !== 'https://your-project-url.supabase.co' &&
+                    supabaseAnonKey !== 'your-anon-key' &&
+                    !supabaseUrl.includes('placeholder') &&
+                    supabaseUrl.includes('.supabase.co');
+
+// Show helpful error messages if not configured
+if (!isConfigured) {
+  console.error('🔧 Supabase Configuration Required');
+  console.error('Please configure your Supabase credentials:');
+  console.error('1. Go to https://supabase.com/dashboard');
+  console.error('2. Select your project (or create one)');
+  console.error('3. Go to Settings > API');
+  console.error('4. Copy your Project URL and anon/public key');
+  console.error('5. Update your .env file with the actual values');
+  console.error('6. Restart your development server');
+  
+  if (!supabaseUrl || supabaseUrl.includes('your-project-url') || supabaseUrl.includes('your-supabase-url')) {
+    console.error('❌ VITE_SUPABASE_URL is not properly configured');
+  }
+  if (!supabaseAnonKey || supabaseAnonKey === 'your-anon-key') {
+    console.error('❌ VITE_SUPABASE_ANON_KEY is not properly configured');
+  }
+}
+
+// Create client - use actual values if configured, otherwise create a non-functional client
+export const supabase = createClient(
+  supabaseUrl || 'https://placeholder.supabase.co', 
+  supabaseAnonKey || 'placeholder-key'
+);
+
+// Export validation functions
+export const isSupabaseConfigured = () => isConfigured;
+
+export const getSupabaseConfig = () => ({
+  url: supabaseUrl,
+  key: supabaseAnonKey,
+  isConfigured
+});
 
 // Types for our Supabase tables
 export type User = {
